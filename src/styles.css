@@ -210,9 +210,14 @@ body::before {
   border-radius: var(--pulse-radius, 0.35rem);
   box-shadow: inset 0 0 0 4px var(--pulse-color, rgba(59, 130, 246, 0.35));
   opacity: var(--pulse-opacity, 0);
+  pointer-events: none;
+}
+/* La pulsation ne tourne que sur les cases qui l'affichent: sur toutes les cases
+   (même invisible), elle forçait à redessiner la grille entière à chaque image. */
+.pulse-hint::after,
+.pulse-preview::after {
   animation: clear-preview-pulse 1s infinite;
   animation-delay: var(--pulse-delay, 0ms);
-  pointer-events: none;
 }
 .pulse-hint {
   --pulse-opacity: 1;
@@ -686,9 +691,11 @@ body::before {
 /* Rotate n'agit que sur la pièce courante: on le pose dans sa carte, à droite */
 .tb-rotate      { --x: 470; --y: 1330; --w: 114; --h: 136; --e: 10; --f: 1; --g: 0.9375; }
 /* Sous la suivante: Échanger, Annuler, Bonus (icône + libellé) */
-.tb-swap        { --x: 620; --y: 1364; --w: 114; --h: 126; --e: 10; --f: 1; --g: 0.9375; }
-.tb-undo        { --x: 745; --y: 1364; --w: 114; --h: 126; --e: 10; --f: 1; --g: 0.9375; }
-.tb-bonus       { --x: 870; --y: 1364; --w: 114; --h: 126; --e: 10; --f: 1; --g: 0.9375; }
+.tb-swap        { --x: 620; --y: 1364; --w: 174; --h: 126; --e: 10; --f: 1; --g: 0.9375; }
+.tb-undo        { --x: 810; --y: 1364; --w: 174; --h: 126; --e: 10; --f: 1; --g: 0.9375; }
+/* Bonus: barre pleine largeur entre la grille et les pièces. Sur les écrans plus
+   allongés que la maquette, elle se cale au milieu de l'espace libre (--f) et grandit un peu. */
+.tb-bonus       { --x: 40;  --y: 1116; --w: 944; --h: 56;  --e: 7;  --f: 0.62; --g: 0.9375; }
 
 /* ---------- Logo + nuage ---------- */
 .tb-blob { pointer-events: none; overflow: visible; }
@@ -1351,7 +1358,8 @@ body::before {
   overflow: hidden;
   pointer-events: none;
 }
-.tb-bonus-bar > span {
+.tb-bonus-bar-text { display: none; }
+.tb-bonus-bar-fill {
   display: block;
   height: 100%;
   border-radius: inherit;
@@ -1359,7 +1367,7 @@ body::before {
   transition: width 0.4s ease-out;
 }
 .tb-bonus-ready .tb-bonus-bar { background: rgba(120, 60, 10, 0.22); }
-.tb-bonus-ready .tb-bonus-bar > span { background: #fff3cf; }
+.tb-bonus-ready .tb-bonus-bar-fill { background: #fff3cf; }
 @media (min-aspect-ratio: 1/1) {
   .tb-bonus-bar { left: calc(30 * var(--u)); right: calc(30 * var(--u)); bottom: calc(8 * var(--u)); height: calc(6 * var(--u)); }
   .tb-layout .tb-bonus .tb-pill { position: static; margin: 0; }
@@ -1459,4 +1467,53 @@ body::before {
 .tb-bonus-toast-info { font-size: 0.95rem; white-space: normal; text-align: center; max-width: 90vw; width: max-content; border-radius: 1.2rem; }
 @media (max-aspect-ratio: 1/1) {
   .tb-layout .tb-bonus .tb-pill { background: var(--tb-coral, #f85e4e); color: #fff6e2; box-shadow: 0 calc(3 * var(--u)) 0 #c13f36; }
+}
+
+/* ---------- Mobile: bonus en barre horizontale ---------- */
+@media (max-aspect-ratio: 1/1) {
+  .tb-layout .tb-bonus {
+    /* Plus haute quand il y a de la place en trop (écrans allongés) */
+    height: calc(56 * var(--u) + min(var(--rest) * 0.3, 44 * var(--u)));
+    --r: 999;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: calc(18 * var(--u));
+    padding: 0 calc(16 * var(--u)) 0 calc(28 * var(--u)) !important;
+  }
+  .tb-layout .tb-bonus .tb-btn-cap { display: none; }
+  .tb-layout .tb-bonus .tb-btn-text { display: block; flex-shrink: 0; font-size: calc(32 * var(--u)); font-weight: 800; }
+  .tb-layout .tb-bonus svg, .tb-layout .tb-bonus lucide-angular { flex-shrink: 0; width: calc(38 * var(--u)); height: calc(38 * var(--u)); }
+  .tb-layout .tb-bonus .tb-bonus-bar {
+    position: relative;
+    inset: auto;
+    flex: 1;
+    min-width: 0;
+    height: calc(34 * var(--u));
+    border-radius: 9999px;
+    background: rgba(120, 70, 30, 0.16);
+    box-shadow: inset 0 calc(2 * var(--u)) calc(3 * var(--u)) rgba(80, 40, 10, 0.18);
+  }
+  .tb-layout .tb-bonus .tb-bonus-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; }
+  .tb-layout .tb-bonus .tb-bonus-bar-text {
+    display: flex;
+    position: absolute;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(24 * var(--u));
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .tb-layout .tb-bonus-ready .tb-bonus-bar { background: rgba(120, 60, 10, 0.2); }
+  .tb-layout .tb-bonus-ready .tb-bonus-bar-fill { background: rgba(255, 243, 207, 0.75); }
+  .tb-layout .tb-bonus .tb-pill {
+    position: static;
+    flex-shrink: 0;
+    margin: 0;
+    height: calc(40 * var(--u));
+    min-width: calc(54 * var(--u));
+    font-size: calc(26 * var(--u));
+    box-shadow: none;
+  }
 }

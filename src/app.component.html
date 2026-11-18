@@ -179,7 +179,10 @@
       @if (bonusCharges() > 0) {
         <span class="tb-pill">{{ bonusCharges() }}</span>
       }
-      <span class="tb-bonus-bar" aria-hidden="true"><span [style.width.%]="bonusProgress() * 100"></span></span>
+      <span class="tb-bonus-bar" aria-hidden="true">
+        <span class="tb-bonus-bar-fill" [style.width.%]="bonusProgress() * 100"></span>
+        <span class="tb-bonus-bar-text">{{ fmt(score()) }} / {{ fmt(nextBonusAt()) }}</span>
+      </span>
     </button>
     @if (bonusToast()) {
       <div class="tb-bonus-toast" role="status">✨ {{ i18n.t().bonusGained }}</div>

@@ -180,8 +180,10 @@ export class AppComponent implements OnInit {
 
   /** 4150 → "4 150" */
   fmt(n: number): string {
-    return n.toLocaleString('fr-FR').replace(/[\u202f\u00a0,]/g, ' ');
+    return AppComponent.NUMBER_FORMAT.format(n).replace(/[\u202f\u00a0,]/g, ' ');
   }
+  /** Formateur créé une seule fois: toLocaleString en recrée un à chaque appel (coûteux à chaque rendu) */
+  private static readonly NUMBER_FORMAT = new Intl.NumberFormat('fr-FR');
 
   isDragging = signal(false);
   isHintTooltipVisible = signal(false);
