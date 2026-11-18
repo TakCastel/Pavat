@@ -191,12 +191,13 @@
         <p class="tb-bonus-panel-title">{{ i18n.t().bonusChooseTitle }}</p>
         <div class="tb-bonus-choices">
           @for (b of bonusTypes; track b.type) {
-            <button class="tb-btn tb-btn-gold tb-bonus-choice-card" (click)="chooseBonus(b.type)"
-              [disabled]="bonusInventory()[b.type] >= MAX_BONUS">
+            <button class="tb-btn tb-btn-gold tb-bonus-choice-card" (click)="chooseBonus(b.type)">
               <lucide-angular [img]="b.icon"></lucide-angular>
               <span class="tb-bonus-choice-name">{{ bonusName(b.type) }}</span>
               <span class="tb-bonus-choice-desc">{{ bonusDesc(b.type) }}</span>
-              <span class="tb-bonus-choice-count">{{ bonusInventory()[b.type] }} / {{ MAX_BONUS }}</span>
+              @if (bonusInventory()[b.type] > 0) {
+                <span class="tb-bonus-choice-count">× {{ bonusInventory()[b.type] }}</span>
+              }
             </button>
           }
         </div>

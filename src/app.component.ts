@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, OnInit, Injector, afterNextRender } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { GameService, MAX_BONUS_PER_TYPE } from './services/game.service';
+import { GameService } from './services/game.service';
 import { Tile, BonusType } from './models/game.model';
 import { GridComponent } from './components/grid/grid.component';
 import { TilePreviewComponent } from './components/tile-preview/tile-preview.component';
@@ -112,7 +112,6 @@ export class AppComponent implements OnInit {
   minValidatedGroupSize = this.gameService.minValidatedGroupSize;
 
   // ---------- Bonus: 1 choix à chaque palier (10 000, 25 000, 45 000…) ----------
-  readonly MAX_BONUS = MAX_BONUS_PER_TYPE;
   /** Les trois bonus, dans l'ordre d'affichage */
   readonly bonusTypes: { type: BonusType; icon: any }[] = [
     { type: 'clear', icon: Eraser },
