@@ -43,7 +43,7 @@ Ce document decrit toutes les regles et mecanismes observes dans le jeu.
 - Miroir: renverse horizontalement la tuile (si asymetrique).
 - Echange: permute tuile courante et suivante.
 - Annuler: reprend le dernier coup (charges gagnees en validant des groupes).
-- Bonus: a chaque palier de score, on choisit un bonus parmi trois (3 de chaque type en reserve au maximum).
+- Bonus: a chaque palier de score, on choisit un bonus parmi trois (pas de limite: on peut en cumuler autant qu'on veut).
   Paliers: 10 000, 22 500, 37 500, 55 000, 75 000, 97 500... (l'ecart grandit de 2 500 a chaque palier).
   - Nettoyage: retire de la grille toutes les cases d'une couleur (touchee sur la grille).
   - Pinceau: repeint la piece actuelle dans la couleur choisie.

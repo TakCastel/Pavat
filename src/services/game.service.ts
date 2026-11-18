@@ -95,8 +95,7 @@ function bonusThresholdsReached(score: number): number {
   while (bonusThreshold(n + 1) <= score) n++;
   return n;
 }
-/** Réserve maximale par type de bonus */
-export const MAX_BONUS_PER_TYPE = 3;
+/* Pas de limite de réserve: on peut cumuler autant de bonus qu'on veut */
 export const BONUS_TYPES: BonusType[] = ['clear', 'paint', 'bomb'];
 const EMPTY_INVENTORY: BonusInventory = { clear: 0, paint: 0, bomb: 0 };
 
@@ -509,7 +508,7 @@ export class GameService {
         // et les paliers sont recalculés avec la nouvelle progression
         bonusInventory: savedState.bonusInventory
           ? { ...EMPTY_INVENTORY, ...savedState.bonusInventory }
-          : { ...EMPTY_INVENTORY, clear: Math.min(MAX_BONUS_PER_TYPE, savedState.bonusCharges ?? 0) },
+          : { ...EMPTY_INVENTORY, clear: savedState.bonusCharges ?? 0 },
         bonusEarned: savedState.bonusInventory
           ? (savedState.bonusEarned ?? 0)
           : bonusThresholdsReached(savedState.score || 0),
@@ -709,27 +708,23 @@ export class GameService {
     const reached = bonusThresholdsReached(s.score);
     const earned = s.bonusEarned ?? 0;
     if (reached <= earned) return;
-    // Plus rien à choisir si les trois réserves sont pleines
-    const anyRoom = BONUS_TYPES.some(t => (s.bonusInventory ?? EMPTY_INVENTORY)[t] < MAX_BONUS_PER_TYPE);
     this._gameState.update(st => ({
       ...st,
       bonusEarned: reached,
-      bonusPending: anyRoom ? (st.bonusPending ?? 0) + (reached - earned) : (st.bonusPending ?? 0),
+      bonusPending: (st.bonusPending ?? 0) + (reached - earned),
     }));
-    if (anyRoom) this._bonusGain.set({ id: ++this._animSeq, count: reached - earned });
+    this._bonusGain.set({ id: ++this._animSeq, count: reached - earned });
   }
 
   /** Le joueur choisit le bonus de son palier. */
   public chooseBonus(type: BonusType): boolean {
     const s = this.state();
     const inv = s.bonusInventory ?? EMPTY_INVENTORY;
-    if ((s.bonusPending ?? 0) <= 0 || inv[type] >= MAX_BONUS_PER_TYPE) return false;
-    const newInv = { ...inv, [type]: inv[type] + 1 };
-    const stillRoom = BONUS_TYPES.some(t => newInv[t] < MAX_BONUS_PER_TYPE);
+    if ((s.bonusPending ?? 0) <= 0) return false;
     this._gameState.update(st => ({
       ...st,
-      bonusInventory: newInv,
-      bonusPending: stillRoom ? Math.max(0, (st.bonusPending ?? 0) - 1) : 0,
+      bonusInventory: { ...inv, [type]: inv[type] + 1 },
+      bonusPending: Math.max(0, (st.bonusPending ?? 0) - 1),
     }));
     this.saveGameState();
     this.soundService.playSwapSound();
