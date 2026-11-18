@@ -1504,6 +1504,7 @@ body::before {
   25% { transform: scale(1.04, 1.25); box-shadow: 0 0 0 calc(4 * var(--u)) rgba(245, 182, 58, 0.55); }
   55% { transform: scale(1); }
 }
+.tb-bonus-next-text { transform-origin: left center; }
 @media (max-aspect-ratio: 1/1) {
   /* Plus haute quand il y a de la place en trop (écrans allongés) */
   .tb-layout .tb-bonus { height: calc(120 * var(--u) + min(var(--rest) * 0.3, 50 * var(--u))); }
