@@ -31,4 +31,8 @@ export interface GameState {
   undoProgressPoints: number;
   /** Nombre d'annulations débloquées depuis le début de la partie (fait monter le coût) */
   undoUnlocked?: number;
+  /** Bonus "nettoyer une couleur" disponibles */
+  bonusCharges?: number;
+  /** Nombre de paliers de score déjà récompensés (1 palier = BONUS_POINTS_STEP points) */
+  bonusEarned?: number;
 }

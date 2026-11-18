@@ -306,7 +306,19 @@ export class GridComponent {
     return this.sanitizer.bypassSecurityTrustHtml(svgString);
   }
   
+  /** Mode bonus: la couleur visée brille, le reste s'efface */
   getCellClass(row: number, col: number): string {
+    const base = this.computeCellClass(row, col);
+    if (!this.gameService.bonusPickMode()) return base;
+    const w = this.toWorldCoords(row, col);
+    const cell = this.grid()[w.row]?.[w.col];
+    const picked = this.gameService.bonusPickColor();
+    if (!cell?.color || cell.blocked) return `${base} cell-bonus-dim`;
+    if (!picked) return `${base} cell-bonus-pickable`;
+    return cell.color === picked ? `${base} cell-bonus-target` : `${base} cell-bonus-dim`;
+  }
+
+  private computeCellClass(row: number, col: number): string {
     const worldCoords = this.toWorldCoords(row, col);
     const cell = this.grid()[worldCoords.row][worldCoords.col];
     const key = `${worldCoords.row},${worldCoords.col}`;
@@ -456,6 +468,7 @@ export class GridComponent {
   }
 
   onGridMouseMove(event: MouseEvent): void {
+    if (this.gameService.bonusPickMode()) return;
     if (this.currentTile()) {
       this._updateHoveredCellFromEvent(event);
     }
@@ -469,8 +482,20 @@ export class GridComponent {
     // This functionality is removed per user request.
   }
 
-  onGridClick(): void {
+  /** Mode bonus: toucher une case vise sa couleur */
+  private pickBonusAt(clientX: number, clientY: number, surface: HTMLElement): void {
+    const hit = this.getWorldCellFromClient(clientX, clientY, surface);
+    if (hit) this.gameService.pickBonusCell(hit.row, hit.col);
+  }
+
+  onGridClick(event?: MouseEvent): void {
     if (this.isShrinking()) return;
+    if (this.gameService.bonusPickMode()) {
+      if (event && Date.now() - this.lastTouchTime >= 300) {
+        this.pickBonusAt(event.clientX, event.clientY, event.currentTarget as HTMLElement);
+      }
+      return;
+    }
     if (this.suppressNextClick) {
       this.suppressNextClick = false;
       return;
@@ -506,11 +531,15 @@ export class GridComponent {
   onTouchEnd(event: TouchEvent): void {
     event.preventDefault();
     this.lastTouchTime = Date.now();
+    const touch = event.changedTouches?.[0];
+    if (event.type === 'touchend' && touch && this.gameService.bonusPickMode() && !this.isShrinking()) {
+      this.pickBonusAt(touch.clientX, touch.clientY, event.currentTarget as HTMLElement);
+    }
   }
 
   // Gestion des événements de drag depuis la tuile
   onTileDragMove(event: CustomEvent): void {
-    if (!this.currentTile() || this.isShrinking()) return;
+    if (!this.currentTile() || this.isShrinking() || this.gameService.bonusPickMode()) return;
     const gridElement = event.detail.target as HTMLElement;
     if (!gridElement) return;
     

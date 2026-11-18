@@ -331,6 +331,7 @@ body::before {
 .tb-btn-coral { background: linear-gradient(180deg, #fc6f52 0%, #f85e4e 55%, #ec5048 100%); color: #fff6e2; --edge: var(--tb-coral-edge); text-shadow: 0 2px 0 rgba(120,20,20,0.25); }
 .tb-btn-cream { background: linear-gradient(180deg, var(--tb-cream), var(--tb-cream-2)); color: var(--tb-ink); --edge: var(--tb-cream-edge); }
 .tb-btn-plum  { background: linear-gradient(180deg, #773946, var(--tb-plum) 40%); color: #fdf3e1; --edge: var(--tb-plum-edge); }
+.tb-btn-gold  { background: linear-gradient(180deg, #ffd96a 0%, var(--tb-gold) 55%, #f0a92a 100%); color: #5a2d0c; --edge: #c8862a; }
 .tb-btn-green { background: linear-gradient(180deg, #4fd08a, #2fb36c); color: #fff; --edge: #1f7f4b; text-shadow: 0 2px 0 rgba(0,0,0,0.15); }
 
 /* Pastille de compteur (Annuler 0/3) */
@@ -680,12 +681,14 @@ body::before {
 .tb-gear        { --x: 913; --y: 56;  --w: 80;  --h: 72;  --e: 8;  --f: 0; }
 .tb-scorecard   { --x: 80;  --y: 218; --w: 864; --h: 107; --e: 8;  --f: 0.12; }
 .tb-board-box   { --x: 111; --y: 357; --w: 800; --h: 750; --f: 0.3; --gw: 1; --gh: 0.9375; --gx: 0.5; }
-.tb-piece-cur   { --x: 40;  --y: 1180; --w: 600; --h: 320; --e: 8; --f: 1; --g: 0.9375; }
-.tb-piece-next  { --x: 664; --y: 1180; --w: 320; --h: 190; --e: 8; --f: 1; --g: 0.9375; }
+.tb-piece-cur   { --x: 40;  --y: 1180; --w: 560; --h: 320; --e: 8; --f: 1; --g: 0.9375; }
+.tb-piece-next  { --x: 620; --y: 1180; --w: 364; --h: 168; --e: 8; --f: 1; --g: 0.9375; }
 /* Rotate n'agit que sur la pièce courante: on le pose dans sa carte, à droite */
-.tb-rotate      { --x: 520; --y: 1293; --w: 96;  --h: 94;  --e: 10; --f: 1; --g: 0.9375; }
-.tb-swap        { --x: 664; --y: 1396; --w: 152; --h: 94;  --e: 10; --f: 1; --g: 0.9375; }
-.tb-undo        { --x: 832; --y: 1396; --w: 152; --h: 94;  --e: 10; --f: 1; --g: 0.9375; }
+.tb-rotate      { --x: 470; --y: 1330; --w: 114; --h: 136; --e: 10; --f: 1; --g: 0.9375; }
+/* Sous la suivante: Échanger, Annuler, Bonus (icône + libellé) */
+.tb-swap        { --x: 620; --y: 1364; --w: 114; --h: 126; --e: 10; --f: 1; --g: 0.9375; }
+.tb-undo        { --x: 745; --y: 1364; --w: 114; --h: 126; --e: 10; --f: 1; --g: 0.9375; }
+.tb-bonus       { --x: 870; --y: 1364; --w: 114; --h: 126; --e: 10; --f: 1; --g: 0.9375; }
 
 /* ---------- Logo + nuage ---------- */
 .tb-blob { pointer-events: none; overflow: visible; }
@@ -769,19 +772,37 @@ body::before {
   font-size: calc(34 * var(--u));
 }
 
-/* Mobile (portrait): boutons icône seuls, pastille du compteur sur Annuler */
+/* Libellé court sous l'icône: seulement en portrait (en paysage, le texte complet est à côté) */
+.tb-btn-cap { display: none; }
+
+/* Mobile (portrait): icône + libellé court dessous, pastille du compteur sur Annuler / Bonus */
 @media (max-aspect-ratio: 1/1) {
   .tb-btn-text { display: none; }
   /* Laisse la place au bouton rotate à droite de la carte */
-  .tb-piece-cur .tb-piece-slot { right: calc(136 * var(--u)); }
-  .tb-rotate, .tb-swap, .tb-undo {
+  .tb-piece-cur .tb-piece-slot { right: calc(150 * var(--u)); }
+  .tb-rotate, .tb-swap, .tb-undo, .tb-bonus {
     --r: 30;
+    flex-direction: column;
     justify-content: center;
-    gap: 0;
+    gap: calc(6 * var(--u));
     padding: 0 !important;
   }
+  .tb-btn-cap {
+    display: block;
+    max-width: 100%;
+    padding: 0 calc(4 * var(--u));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: calc(24 * var(--u));
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: 0;
+  }
   .tb-rotate svg, .tb-swap svg, .tb-rotate lucide-angular, .tb-swap lucide-angular,
-  .tb-undo svg, .tb-undo lucide-angular { width: calc(54 * var(--u)); height: calc(54 * var(--u)); }
+  .tb-undo svg, .tb-undo lucide-angular,
+  .tb-bonus svg, .tb-bonus lucide-angular { width: calc(50 * var(--u)); height: calc(50 * var(--u)); stroke-width: 3; }
+  .tb-layout .tb-bonus .tb-pill,
   .tb-layout .tb-undo .tb-pill {
     position: absolute;
     top: calc(-18 * var(--u));
@@ -970,6 +991,13 @@ body::before {
   .tb-undo { --r: 36; gap: calc(14 * var(--u)); padding-left: calc(30 * var(--u)) !important; padding-right: calc(22 * var(--u)) !important; font-size: calc(32 * var(--u)); }
   .tb-undo svg, .tb-undo lucide-angular { flex-shrink: 0; width: calc(36 * var(--u)); height: calc(36 * var(--u)); }
   .tb-undo .tb-pill { height: calc(40 * var(--u)); min-width: calc(88 * var(--u)); font-size: calc(30 * var(--u)); }
+  /* Bonus: sous la carte de score, même style que Annuler */
+  .tb-bonus { --x: 146; --y: 640; --w: 325; --h: 90; --e: 10; }
+  .tb-bonus { --r: 40; justify-content: flex-start; gap: calc(16 * var(--u)); padding: 0 calc(22 * var(--u)) 0 calc(30 * var(--u)) !important; font-size: calc(37 * var(--u)); }
+  .tb-bonus svg, .tb-bonus lucide-angular { flex-shrink: 0; width: calc(44 * var(--u)); height: calc(44 * var(--u)); }
+  .tb-bonus .tb-btn-text { flex: 1; min-width: 0; text-align: center; white-space: nowrap; }
+  .tb-bonus .tb-kbd { flex-shrink: 0; }
+  .tb-bonus .tb-pill { flex-shrink: 0; height: calc(40 * var(--u)); min-width: calc(48 * var(--u)); justify-content: center; font-size: calc(28 * var(--u)); padding: 0 calc(10 * var(--u)); }
 
   /* Plateau */
   .tb-board-box { border-radius: calc(52 * var(--u)); padding: calc(9 * var(--u)) calc(11 * var(--u)) calc(9 * var(--u)) calc(12 * var(--u)); }
@@ -1299,4 +1327,136 @@ body::before {
   pointer-events: none;
   opacity: 0;
   z-index: 40;
+}
+
+/* ---------- Bonus "nettoyer une couleur" ---------- */
+.tb-bonus { font-weight: 700; overflow: visible; }
+.tb-bonus .tb-pill { background: #fff3cf; color: #5a2d0c; }
+/* Pas encore de bonus: bouton crème, l'icône reste dorée */
+.tb-bonus:not(.tb-bonus-ready) {
+  background: linear-gradient(180deg, var(--tb-cream), var(--tb-cream-2));
+  color: var(--tb-ink);
+  --edge: var(--tb-cream-edge);
+}
+.tb-bonus:not(.tb-bonus-ready) lucide-angular { color: #e0a020; }
+/* Barre d'avancée vers le prochain bonus, en bas du bouton */
+.tb-bonus-bar {
+  position: absolute;
+  left: calc(16 * var(--u));
+  right: calc(16 * var(--u));
+  bottom: calc(9 * var(--u));
+  height: calc(7 * var(--u));
+  border-radius: 9999px;
+  background: rgba(120, 70, 30, 0.18);
+  overflow: hidden;
+  pointer-events: none;
+}
+.tb-bonus-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffcf4a, #f39a1e);
+  transition: width 0.4s ease-out;
+}
+.tb-bonus-ready .tb-bonus-bar { background: rgba(120, 60, 10, 0.22); }
+.tb-bonus-ready .tb-bonus-bar > span { background: #fff3cf; }
+@media (min-aspect-ratio: 1/1) {
+  .tb-bonus-bar { left: calc(30 * var(--u)); right: calc(30 * var(--u)); bottom: calc(8 * var(--u)); height: calc(6 * var(--u)); }
+  .tb-layout .tb-bonus .tb-pill { position: static; margin: 0; }
+}
+.tb-bonus-ready lucide-angular { animation: tb-bonus-twinkle 2.4s ease-in-out infinite; }
+@keyframes tb-bonus-twinkle {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.12) rotate(8deg); }
+}
+@keyframes tb-bonus-gain {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.2) rotate(-5deg); }
+  60% { transform: scale(0.95) rotate(3deg); }
+  100% { transform: scale(1); }
+}
+.tb-bonus-gain { animation: tb-bonus-gain 0.8s ease-out; }
+.tb-bonus-toast {
+  position: fixed;
+  left: 50%;
+  top: calc(env(safe-area-inset-top, 0px) + 18%);
+  z-index: 70;
+  padding: 0.7rem 1.2rem;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #ffd96a, var(--tb-gold));
+  color: #5a2d0c;
+  font-weight: 800;
+  font-size: 1.05rem;
+  white-space: nowrap;
+  box-shadow: 0 5px 0 #c8862a, 0 12px 24px rgba(60, 30, 20, 0.3);
+  pointer-events: none;
+  animation: tb-bonus-toast 2.6s ease-out both;
+}
+@keyframes tb-bonus-toast {
+  0% { opacity: 0; transform: translate(-50%, 20px) scale(0.8); }
+  12% { opacity: 1; transform: translate(-50%, 0) scale(1.05); }
+  20% { transform: translate(-50%, 0) scale(1); }
+  85% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -16px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tb-bonus-ready lucide-angular, .tb-bonus-gain { animation: none; }
+}
+/* Mode bonus: panneau à la place des pièces, la grille reste entièrement visible */
+.tb-bonus-panel {
+  --x: 40; --y: 1180; --w: 944; --h: 320; --e: 8; --f: 1; --g: 0.9375;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(22 * var(--u));
+  padding: calc(20 * var(--u)) calc(36 * var(--u));
+  border-radius: calc(40 * var(--u));
+  text-align: center;
+  animation: tb-bonus-panel-in 220ms cubic-bezier(0.3, 0.7, 0.4, 1.2) both;
+}
+@keyframes tb-bonus-panel-in {
+  from { opacity: 0; transform: translateY(calc(30 * var(--u))) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.tb-bonus-panel-title { font-size: calc(40 * var(--u)); font-weight: 800; line-height: 1.1; }
+.tb-bonus-panel-hint { font-size: calc(32 * var(--u)); font-weight: 600; opacity: 0.8; }
+.tb-bonus-panel-pick { display: flex; align-items: center; gap: calc(18 * var(--u)); font-size: calc(34 * var(--u)); font-weight: 700; }
+.tb-bonus-panel-actions { display: flex; gap: calc(24 * var(--u)); width: 100%; max-width: calc(700 * var(--u)); }
+.tb-bonus-panel-actions .tb-btn { flex: 1; height: calc(96 * var(--u)); font-size: calc(36 * var(--u)); font-weight: 700; --e: 8; }
+.tb-bonus-panel-actions .tb-btn:disabled { opacity: 0.45; }
+@media (min-aspect-ratio: 1/1) {
+  /* Écran large: le panneau couvre la colonne de gauche (score + bonus) */
+  .tb-bonus-panel { --x: 146; --y: 244; --w: 325; --h: 486; padding: calc(24 * var(--u)); gap: calc(26 * var(--u)); }
+  .tb-bonus-panel-title { font-size: calc(34 * var(--u)); }
+  .tb-bonus-panel-hint { font-size: calc(28 * var(--u)); }
+  .tb-bonus-panel-pick { font-size: calc(30 * var(--u)); }
+  .tb-bonus-panel-actions { flex-direction: column-reverse; gap: calc(18 * var(--u)); }
+  .tb-bonus-panel-actions .tb-btn { flex: none; height: calc(80 * var(--u)); font-size: calc(32 * var(--u)); }
+}
+.tb-bonus-swatch { display: block; width: 34px; height: 34px; }
+/* Le panneau recouvre le bouton Bonus: on le masque, sinon sa pastille dépasse */
+.tb-bonus-active { visibility: hidden; }
+
+/* Grille en mode bonus */
+.tb-layout .tb-board .cell-base { transition: opacity 0.2s, filter 0.2s, transform 0.2s; }
+.tb-board-bonus .cell-bonus-dim { opacity: 0.28; filter: saturate(0.4); }
+.tb-board-bonus .cell-bonus-pickable { cursor: pointer; animation: tb-bonus-pickable 1.4s ease-in-out infinite; }
+.tb-board-bonus .cell-bonus-target { cursor: pointer; animation: tb-bonus-target 0.9s ease-in-out infinite; z-index: 1; }
+@keyframes tb-bonus-pickable {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.94); }
+}
+@keyframes tb-bonus-target {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.06); filter: brightness(1.25); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tb-board-bonus .cell-bonus-pickable, .tb-board-bonus .cell-bonus-target { animation: none; }
+  .tb-board-bonus .cell-bonus-target { filter: brightness(1.2); }
+}
+.tb-bonus-toast-info { font-size: 0.95rem; white-space: normal; text-align: center; max-width: 90vw; width: max-content; border-radius: 1.2rem; }
+@media (max-aspect-ratio: 1/1) {
+  .tb-layout .tb-bonus .tb-pill { background: var(--tb-coral, #f85e4e); color: #fff6e2; box-shadow: 0 calc(3 * var(--u)) 0 #c13f36; }
 }

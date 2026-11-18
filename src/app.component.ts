@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, O
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { GameService } from './services/game.service';
+import { Tile } from './models/game.model';
 import { GridComponent } from './components/grid/grid.component';
 import { TilePreviewComponent } from './components/tile-preview/tile-preview.component';
 import { TutorialComponent } from './components/tutorial/tutorial.component';
@@ -12,7 +13,7 @@ import { OptionsService } from './services/options.service';
 import { ColorblindIconService } from './services/colorblind-icon.service';
 import { OptionsMenuComponent } from './components/options-menu/options-menu.component';
 import { LandingPageComponent } from './components/landing-page/landing-page.component';
-import { LucideAngularModule, Volume2, VolumeX, Sun, Moon, Sparkles, ShieldCheck, Undo2, RotateCwSquare, Replace } from 'lucide-angular';
+import { LucideAngularModule, Volume2, VolumeX, Sun, Moon, Sparkles, ShieldCheck, Undo2, RotateCw, ArrowLeftRight } from 'lucide-angular';
 
 import { CookieBannerComponent } from './components/cookie-banner/cookie-banner.component';
 @Component({
@@ -27,6 +28,9 @@ import { CookieBannerComponent } from './components/cookie-banner/cookie-banner.
     '(window:keydown.space)': 'tutorialService.isTutorialActive() || rotateTile()',
     '(window:keydown.f)': 'tutorialService.isTutorialActive() || onSwapKeyPress()',
     '(window:keydown.z)': 'tutorialService.isTutorialActive() || onUndoKeyPress()',
+    '(window:keydown.b)': 'tutorialService.isTutorialActive() || toggleBonusPick()',
+    '(window:keydown.escape)': 'cancelBonusPick()',
+    '(window:keydown.enter)': 'bonusPickMode() && confirmBonusPick()',
   },
 })
 export class AppComponent implements OnInit {
@@ -80,8 +84,8 @@ export class AppComponent implements OnInit {
   readonly SparklesIcon = Sparkles;
   readonly ShieldCheckIcon = ShieldCheck;
   readonly Undo2Icon = Undo2;
-  readonly RotateIcon = RotateCwSquare;
-  readonly SwapIcon = Replace;
+  readonly RotateIcon = RotateCw;
+  readonly SwapIcon = ArrowLeftRight;
   protected readonly Math = Math;
 
   score = this.gameService.score;
@@ -107,6 +111,63 @@ export class AppComponent implements OnInit {
     setTimeout(() => this.undoGainPulse.set(false), 700);
   });
   minValidatedGroupSize = this.gameService.minValidatedGroupSize;
+
+  // ---------- Bonus "nettoyer une couleur" (1 tous les 10 000 pts) ----------
+  bonusCharges = this.gameService.bonusCharges;
+  canUseBonus = this.gameService.canUseBonus;
+  bonusProgress = this.gameService.bonusProgress;
+  nextBonusAt = this.gameService.nextBonusAt;
+  bonusPickMode = this.gameService.bonusPickMode;
+  bonusPickColor = this.gameService.bonusPickColor;
+  bonusPickCount = this.gameService.bonusPickCount;
+  /** Pastille de la couleur visée, dessinée comme une vraie pièce (palette et formes daltonien comprises) */
+  bonusPickTile = computed<Tile | null>(() => {
+    const color = this.bonusPickColor();
+    return color ? { id: -1, shape: [[1]], color, width: 1, height: 1, barycenter: { r: 0, c: 0 } } : null;
+  });
+  /** Sans bonus en réserve: petit message qui dit combien de points il faut */
+  protected bonusInfoToast = signal(false);
+  private bonusInfoTimer: any = null;
+  /** Le mode visée s'arrête tout seul si le jeu ne permet plus le bonus (rétrécissement, fin de partie) */
+  private bonusPickGuard = effect(() => {
+    if (this.bonusPickMode() && !this.gameService.canPickBonus()) this.gameService.cancelBonusPick();
+  });
+  protected bonusGainPulse = signal(false);
+  protected bonusToast = signal(false);
+  private bonusToastTimer: any = null;
+  private bonusGainEffect = effect(() => {
+    if (!this.gameService.bonusGain()) return;
+    this.bonusGainPulse.set(false);
+    requestAnimationFrame(() => this.bonusGainPulse.set(true));
+    setTimeout(() => this.bonusGainPulse.set(false), 900);
+    this.bonusToast.set(true);
+    clearTimeout(this.bonusToastTimer);
+    this.bonusToastTimer = setTimeout(() => this.bonusToast.set(false), 2600);
+  });
+
+  /** Bouton Bonus: entre (ou sort) du mode visée sur la grille */
+  toggleBonusPick(): void {
+    if (this.tutorialService.isTutorialActive()) return;
+    if (this.bonusPickMode()) {
+      this.gameService.cancelBonusPick();
+      return;
+    }
+    if (this.bonusCharges() > 0) {
+      this.gameService.startBonusPick();
+    } else {
+      this.bonusInfoToast.set(true);
+      clearTimeout(this.bonusInfoTimer);
+      this.bonusInfoTimer = setTimeout(() => this.bonusInfoToast.set(false), 2600);
+    }
+  }
+
+  cancelBonusPick(): void {
+    this.gameService.cancelBonusPick();
+  }
+
+  confirmBonusPick(): void {
+    this.gameService.confirmBonusPick();
+  }
   isSoundEnabled = this.soundService.isSoundEnabled;
   colorPalette = this.optionsService.colorPalette;
 
@@ -460,6 +521,8 @@ export class AppComponent implements OnInit {
 
   onTileMouseDown(event: MouseEvent): void {
     if (!this.currentTile() || event.button !== 0) return;
+    // Reprendre la pièce quitte le mode bonus
+    this.gameService.cancelBonusPick();
     event.preventDefault();
     this.mouseStartPosition = { x: event.clientX, y: event.clientY };
     this.isMouseDragActive = false;

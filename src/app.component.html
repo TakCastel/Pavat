@@ -136,6 +136,7 @@
       [attr.title]="i18n.t().rotate">
       <lucide-angular [img]="RotateIcon"></lucide-angular>
       <span class="tb-btn-text">{{ i18n.t().rotate }}</span>
+      <span class="tb-btn-cap">{{ i18n.t().rotateShort }}</span>
       <kbd class="tb-kbd">R</kbd>
     </button>
     <button
@@ -145,6 +146,7 @@
       [attr.title]="i18n.t().swap">
       <lucide-angular [img]="SwapIcon"></lucide-angular>
       <span class="tb-btn-text">{{ i18n.t().swap }}</span>
+      <span class="tb-btn-cap">{{ i18n.t().swapShort }}</span>
       <kbd class="tb-kbd">F</kbd>
     </button>
     <button
@@ -156,9 +158,54 @@
       [class.tb-undo-gain]="undoGainPulse()">
       <lucide-angular [img]="Undo2Icon"></lucide-angular>
       <span class="tb-btn-text">{{ i18n.t().undo }}</span>
+      <span class="tb-btn-cap">{{ i18n.t().undoShort }}</span>
       <kbd class="tb-kbd tb-kbd-cream">Z</kbd>
       <span class="tb-pill" [class.tb-pill-empty]="undoCharges() === 0">{{ undoCharges() }}</span>
     </button>
+    <!-- Bonus: 1 nettoyage de couleur tous les 10 000 pts. La barre montre l'avancée vers le prochain. -->
+    <button
+      (click)="toggleBonusPick()"
+      class="tb-abs tb-btn tb-btn-gold tb-bonus"
+      [class.tb-bonus-ready]="bonusCharges() > 0"
+      [class.tb-bonus-gain]="bonusGainPulse()"
+      [class.tb-bonus-active]="bonusPickMode()"
+      [attr.aria-pressed]="bonusPickMode()"
+      [attr.aria-label]="i18n.t().bonusButton"
+      [attr.title]="i18n.t().bonusButton + ' — ' + i18n.translateWithParams('bonusNext', fmt(nextBonusAt()))">
+      <lucide-angular [img]="SparklesIcon"></lucide-angular>
+      <span class="tb-btn-text">{{ i18n.t().bonusShort }}</span>
+      <span class="tb-btn-cap">{{ i18n.t().bonusShort }}</span>
+      <kbd class="tb-kbd tb-kbd-cream">B</kbd>
+      @if (bonusCharges() > 0) {
+        <span class="tb-pill">{{ bonusCharges() }}</span>
+      }
+      <span class="tb-bonus-bar" aria-hidden="true"><span [style.width.%]="bonusProgress() * 100"></span></span>
+    </button>
+    @if (bonusToast()) {
+      <div class="tb-bonus-toast" role="status">✨ {{ i18n.t().bonusGained }}</div>
+    }
+    @if (bonusInfoToast()) {
+      <div class="tb-bonus-toast tb-bonus-toast-info" role="status">{{ i18n.translateWithParams('bonusNone', fmt(nextBonusAt())) }}</div>
+    }
+
+    <!-- == Mode bonus: la grille reste visible, on touche une couleur puis on confirme == -->
+    @if (bonusPickMode()) {
+      <div class="tb-abs tb-card tb-bonus-panel" role="dialog" [attr.aria-label]="i18n.t().bonusTitle">
+        <p class="tb-bonus-panel-title">✨ {{ i18n.t().bonusTitle }}</p>
+        @if (bonusPickTile(); as t) {
+          <div class="tb-bonus-panel-pick">
+            <span class="tb-bonus-swatch"><app-tile-preview [tile]="t" [cellPx]="34"></app-tile-preview></span>
+            <span>{{ i18n.translateWithParams('bonusCells', bonusPickCount().toString()) }}</span>
+          </div>
+        } @else {
+          <p class="tb-bonus-panel-hint">{{ i18n.t().bonusTapHint }}</p>
+        }
+        <div class="tb-bonus-panel-actions">
+          <button class="tb-btn tb-btn-cream" (click)="cancelBonusPick()">{{ i18n.t().bonusCancel }}</button>
+          <button class="tb-btn tb-btn-gold" [disabled]="!bonusPickColor() || !canUseBonus()" (click)="confirmBonusPick()">{{ i18n.t().bonusConfirm }}</button>
+        </div>
+      </div>
+    }
   </div>
 
 
