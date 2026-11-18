@@ -181,10 +181,12 @@
         </button>
       }
       </div>
-      <!-- Prochain palier, toujours visible, avec un fin liseré qui se remplit -->
-      <div class="tb-bonus-next" [class.tb-bonus-next-flash]="bonusInfoToast()" role="status">
-        <span class="tb-bonus-next-text">{{ i18n.translateWithParams('bonusNext', fmt(nextBonusAt())) }}</span>
-        <span class="tb-bonus-edge" aria-hidden="true"><span [style.width.%]="bonusProgress() * 100"></span></span>
+      <!-- Avancée vers le prochain palier: barre "score / palier" -->
+      <div class="tb-bonus-progress" [class.tb-bonus-next-flash]="bonusInfoToast()" role="progressbar"
+        aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="Math.round(bonusProgress() * 100)"
+        [attr.aria-label]="i18n.translateWithParams('bonusNext', fmt(nextBonusAt()))">
+        <span class="tb-bonus-progress-fill" [style.width.%]="bonusProgress() * 100"></span>
+        <span class="tb-bonus-progress-text">{{ fmt(score()) }} / {{ fmt(nextBonusAt()) }}</span>
       </div>
     </div>
 
