@@ -13,7 +13,7 @@ import { OptionsService } from './services/options.service';
 import { ColorblindIconService } from './services/colorblind-icon.service';
 import { OptionsMenuComponent } from './components/options-menu/options-menu.component';
 import { LandingPageComponent } from './components/landing-page/landing-page.component';
-import { LucideAngularModule, Volume2, VolumeX, Sun, Moon, Sparkles, ShieldCheck, Undo2, RotateCw, ArrowLeftRight, Eraser, Paintbrush, Bomb, Gift } from 'lucide-angular';
+import { LucideAngularModule, Volume2, VolumeX, Sun, Moon, Sparkles, ShieldCheck, Undo2, RotateCw, ArrowLeftRight, Eraser, Paintbrush, Bomb } from 'lucide-angular';
 
 import { CookieBannerComponent } from './components/cookie-banner/cookie-banner.component';
 @Component({
@@ -112,7 +112,6 @@ export class AppComponent implements OnInit {
   minValidatedGroupSize = this.gameService.minValidatedGroupSize;
 
   // ---------- Bonus: 1 choix à chaque palier (10 000, 25 000, 45 000…) ----------
-  readonly GiftIcon = Gift;
   readonly MAX_BONUS = MAX_BONUS_PER_TYPE;
   /** Les trois bonus, dans l'ordre d'affichage */
   readonly bonusTypes: { type: BonusType; icon: any }[] = [

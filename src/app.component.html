@@ -162,39 +162,33 @@
       <kbd class="tb-kbd tb-kbd-cream">Z</kbd>
       <span class="tb-pill" [class.tb-pill-empty]="undoCharges() === 0">{{ undoCharges() }}</span>
     </button>
-    <!-- == Bonus: réserve des 3 bonus + jauge vers le prochain palier == -->
+    <!-- == Bonus: 3 boutons. Le liseré doré sous la barre se remplit vers le prochain palier. == -->
     <div class="tb-abs tb-card tb-bonus"
       [class.tb-bonus-gain]="bonusGainPulse()"
       [class.tb-bonus-active]="!!bonusPickMode() || bonusPending() > 0">
-      <div class="tb-bonus-slots">
-        @for (b of bonusTypes; track b.type) {
-          <button class="tb-btn tb-bonus-slot"
-            [class.tb-btn-gold]="bonusInventory()[b.type] > 0"
-            [class.tb-btn-cream]="bonusInventory()[b.type] === 0"
-            [class.tb-bonus-slot-empty]="bonusInventory()[b.type] === 0"
-            (click)="startBonus(b.type)"
-            [attr.aria-label]="bonusName(b.type) + ' — ' + bonusDesc(b.type) + ' (' + bonusInventory()[b.type] + ')'"
-            [attr.title]="bonusName(b.type) + ' — ' + bonusDesc(b.type)">
-            <lucide-angular [img]="b.icon"></lucide-angular>
-            <span class="tb-bonus-slot-count">{{ bonusInventory()[b.type] }}</span>
-          </button>
-        }
-      </div>
-      <div class="tb-bonus-gauge" role="progressbar" aria-valuemin="0" aria-valuemax="100"
-        [attr.aria-valuenow]="Math.round(bonusProgress() * 100)"
-        [attr.aria-label]="i18n.translateWithParams('bonusNext', fmt(nextBonusAt()))">
-        <span class="tb-bonus-gauge-fill" [style.width.%]="bonusProgress() * 100"></span>
-        <span class="tb-bonus-gauge-text"><lucide-angular [img]="GiftIcon"></lucide-angular>{{ fmt(score()) }} / {{ fmt(nextBonusAt()) }}</span>
-      </div>
+      @for (b of bonusTypes; track b.type) {
+        <button class="tb-btn tb-bonus-slot"
+          [class.tb-btn-gold]="bonusInventory()[b.type] > 0"
+          [class.tb-btn-cream]="bonusInventory()[b.type] === 0"
+          [class.tb-bonus-slot-empty]="bonusInventory()[b.type] === 0"
+          (click)="startBonus(b.type)"
+          [attr.aria-label]="bonusName(b.type) + ' — ' + bonusDesc(b.type) + ' (' + bonusInventory()[b.type] + ')'"
+          [attr.title]="bonusName(b.type) + ' — ' + bonusDesc(b.type)">
+          <lucide-angular [img]="b.icon"></lucide-angular>
+          <span class="tb-bonus-slot-name">{{ bonusName(b.type) }}</span>
+          <span class="tb-bonus-slot-count">{{ bonusInventory()[b.type] }}</span>
+        </button>
+      }
+      <span class="tb-bonus-edge" aria-hidden="true"><span [style.width.%]="bonusProgress() * 100"></span></span>
+      @if (bonusInfoToast()) {
+        <div class="tb-bonus-bubble" role="status">{{ i18n.translateWithParams('bonusNext', fmt(nextBonusAt())) }}</div>
+      }
     </div>
-    @if (bonusInfoToast()) {
-      <div class="tb-bonus-toast tb-bonus-toast-info" role="status">{{ i18n.translateWithParams('bonusNext', fmt(nextBonusAt())) }}</div>
-    }
 
     <!-- == Palier atteint: choix du bonus == -->
     @if (bonusPending() > 0 && !bonusPickMode()) {
       <div class="tb-abs tb-card tb-bonus-panel tb-bonus-choice" role="dialog" [attr.aria-label]="i18n.t().bonusChooseTitle">
-        <p class="tb-bonus-panel-title">🎁 {{ i18n.t().bonusChooseTitle }}</p>
+        <p class="tb-bonus-panel-title">{{ i18n.t().bonusChooseTitle }}</p>
         <div class="tb-bonus-choices">
           @for (b of bonusTypes; track b.type) {
             <button class="tb-btn tb-btn-gold tb-bonus-choice-card" (click)="chooseBonus(b.type)"
