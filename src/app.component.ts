@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, OnInit, Injector, afterNextRender } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { GameService, TILE_COLORS } from './services/game.service';
+import { GameService } from './services/game.service';
 import { Tile } from './models/game.model';
 import { GridComponent } from './components/grid/grid.component';
 import { TilePreviewComponent } from './components/tile-preview/tile-preview.component';
@@ -28,8 +28,9 @@ import { CookieBannerComponent } from './components/cookie-banner/cookie-banner.
     '(window:keydown.space)': 'tutorialService.isTutorialActive() || rotateTile()',
     '(window:keydown.f)': 'tutorialService.isTutorialActive() || onSwapKeyPress()',
     '(window:keydown.z)': 'tutorialService.isTutorialActive() || onUndoKeyPress()',
-    '(window:keydown.b)': 'tutorialService.isTutorialActive() || openBonusPicker()',
-    '(window:keydown.escape)': 'closeBonusPicker()',
+    '(window:keydown.b)': 'tutorialService.isTutorialActive() || toggleBonusPick()',
+    '(window:keydown.escape)': 'cancelBonusPick()',
+    '(window:keydown.enter)': 'bonusPickMode() && confirmBonusPick()',
   },
 })
 export class AppComponent implements OnInit {
@@ -116,13 +117,21 @@ export class AppComponent implements OnInit {
   canUseBonus = this.gameService.canUseBonus;
   bonusProgress = this.gameService.bonusProgress;
   nextBonusAt = this.gameService.nextBonusAt;
-  isBonusPickerOpen = signal(false);
-  /** Une pastille 1×1 par couleur, dessinée comme une vraie pièce (palette et formes daltonien comprises). */
-  readonly bonusSwatches: Tile[] = TILE_COLORS.map((color, i) => ({
-    id: -1 - i, shape: [[1]], color, width: 1, height: 1, barycenter: { r: 0, c: 0 },
-  }));
-  /** Nombre de cases par couleur, recalculé à l'ouverture du sélecteur */
-  bonusColorCounts = computed(() => (this.isBonusPickerOpen() ? this.gameService.colorCounts() : {} as Record<string, number>));
+  bonusPickMode = this.gameService.bonusPickMode;
+  bonusPickColor = this.gameService.bonusPickColor;
+  bonusPickCount = this.gameService.bonusPickCount;
+  /** Pastille de la couleur visée, dessinée comme une vraie pièce (palette et formes daltonien comprises) */
+  bonusPickTile = computed<Tile | null>(() => {
+    const color = this.bonusPickColor();
+    return color ? { id: -1, shape: [[1]], color, width: 1, height: 1, barycenter: { r: 0, c: 0 } } : null;
+  });
+  /** Sans bonus en réserve: petit message qui dit combien de points il faut */
+  protected bonusInfoToast = signal(false);
+  private bonusInfoTimer: any = null;
+  /** Le mode visée s'arrête tout seul si le jeu ne permet plus le bonus (rétrécissement, fin de partie) */
+  private bonusPickGuard = effect(() => {
+    if (this.bonusPickMode() && !this.gameService.canPickBonus()) this.gameService.cancelBonusPick();
+  });
   protected bonusGainPulse = signal(false);
   protected bonusToast = signal(false);
   private bonusToastTimer: any = null;
@@ -136,19 +145,28 @@ export class AppComponent implements OnInit {
     this.bonusToastTimer = setTimeout(() => this.bonusToast.set(false), 2600);
   });
 
-  openBonusPicker(): void {
+  /** Bouton Bonus: entre (ou sort) du mode visée sur la grille */
+  toggleBonusPick(): void {
     if (this.tutorialService.isTutorialActive()) return;
-    this.isBonusPickerOpen.set(true);
-  }
-
-  closeBonusPicker(): void {
-    this.isBonusPickerOpen.set(false);
-  }
-
-  useBonus(color: string): void {
-    if (this.gameService.useColorClearBonus(color)) {
-      this.isBonusPickerOpen.set(false);
+    if (this.bonusPickMode()) {
+      this.gameService.cancelBonusPick();
+      return;
     }
+    if (this.bonusCharges() > 0) {
+      this.gameService.startBonusPick();
+    } else {
+      this.bonusInfoToast.set(true);
+      clearTimeout(this.bonusInfoTimer);
+      this.bonusInfoTimer = setTimeout(() => this.bonusInfoToast.set(false), 2600);
+    }
+  }
+
+  cancelBonusPick(): void {
+    this.gameService.cancelBonusPick();
+  }
+
+  confirmBonusPick(): void {
+    this.gameService.confirmBonusPick();
   }
   isSoundEnabled = this.soundService.isSoundEnabled;
   colorPalette = this.optionsService.colorPalette;
@@ -503,6 +521,8 @@ export class AppComponent implements OnInit {
 
   onTileMouseDown(event: MouseEvent): void {
     if (!this.currentTile() || event.button !== 0) return;
+    // Reprendre la pièce quitte le mode bonus
+    this.gameService.cancelBonusPick();
     event.preventDefault();
     this.mouseStartPosition = { x: event.clientX, y: event.clientY };
     this.isMouseDragActive = false;

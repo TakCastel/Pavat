@@ -83,7 +83,6 @@ const VALIDATED_CELL_POINTS = 15;
 /** Un bonus "nettoyer une couleur" est gagné à chaque palier de score */
 export const BONUS_POINTS_STEP = 10000;
 const MAX_BONUS_CHARGES = 3;
-export const TILE_COLORS = COLORS;
 
 interface UndoSnapshot {
   grid: Cell[][];
@@ -150,6 +149,17 @@ export class GameService {
     !this.state().isGameOver &&
     this.state().grid.some(row => row.some(cell => cell.color !== null && !cell.blocked))
   );
+  /** Mode "viser": le joueur touche une case de la grille pour choisir la couleur à nettoyer */
+  private _bonusPickMode = signal(false);
+  public readonly bonusPickMode = this._bonusPickMode.asReadonly();
+  private _bonusPickColor = signal<string | null>(null);
+  public readonly bonusPickColor = this._bonusPickColor.asReadonly();
+  /** Nombre de cases qui partiront avec la couleur visée */
+  public readonly bonusPickCount = computed(() => {
+    const color = this._bonusPickColor();
+    if (!color) return 0;
+    return this.grid().reduce((n, row) => n + row.filter(c => c.color === color && !c.blocked).length, 0);
+  });
   private _bonusGain = signal<BonusGainEvent | null>(null);
   public readonly bonusGain = this._bonusGain.asReadonly();
   public readonly shrinkPoints = computed(() => {
@@ -495,6 +505,7 @@ export class GameService {
 
   public startGame(): void {
     clearTimeout(this.shrinkTimeout);
+    this.cancelBonusPick();
     this._undoStack = [];
     this._upcomingTiles = [];
     this._isPlacementAnimating.set(false);
@@ -627,6 +638,40 @@ export class GameService {
     }
   }
 
+  /** Le mode visée est possible tant qu'il reste un bonus et que la grille n'est pas en train de changer */
+  public readonly canPickBonus = computed(() =>
+    (this.state().bonusCharges ?? 0) > 0 && !this.state().isShrinking && !this.state().isGameOver
+  );
+
+  public startBonusPick(): boolean {
+    if (!this.canPickBonus()) return false;
+    this._bonusPickColor.set(null);
+    this._bonusPickMode.set(true);
+    return true;
+  }
+
+  public cancelBonusPick(): void {
+    this._bonusPickMode.set(false);
+    this._bonusPickColor.set(null);
+  }
+
+  /** Vise la couleur d'une case touchée (une case vide ne change rien). */
+  public pickBonusCell(row: number, col: number): void {
+    if (!this._bonusPickMode()) return;
+    const cell = this.grid()[row]?.[col];
+    if (!cell?.color || cell.blocked) return;
+    this._bonusPickColor.set(cell.color);
+    this.soundService.playRotateSound();
+  }
+
+  public confirmBonusPick(): boolean {
+    const color = this._bonusPickColor();
+    if (!color) return false;
+    const ok = this.useColorClearBonus(color);
+    this.cancelBonusPick();
+    return ok;
+  }
+
   /** Nombre de cases de chaque couleur actuellement sur la grille. */
   public colorCounts(): Record<string, number> {
     const counts: Record<string, number> = Object.fromEntries(COLORS.map(c => [c, 0]));
@@ -651,6 +696,7 @@ export class GameService {
     }));
     if (cellsToClear.size === 0) return false;
 
+    this.cancelBonusPick();
     // Le rétrécissement annoncé est suspendu: on revérifie une fois la place libérée
     clearTimeout(this.shrinkTimeout);
     this.pushUndoSnapshot();

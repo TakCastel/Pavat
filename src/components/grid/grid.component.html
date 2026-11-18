@@ -2,13 +2,14 @@
   <app-grid-indicator></app-grid-indicator>
     <div 
       #board
+      [class.tb-board-bonus]="gameService.bonusPickMode()"
       class="grid tb-board aspect-square w-full max-w-full max-h-full touch-none"
       [style]="gridStyles()"
       [style.--pulse-delay]="pulseDelay()"
       [class.pointer-events-none]="isShrinking()"
       (mouseleave)="onGridMouseLeave()"
       (mousemove)="onGridMouseMove($event)"
-      (click)="onGridClick()"
+      (click)="onGridClick($event)"
       (touchstart)="onTouchStart($event)"
       (touchmove)="onTouchMove($event)"
       (touchend)="onTouchEnd($event)"

@@ -794,10 +794,10 @@ body::before {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: calc(25 * var(--u));
+    font-size: calc(24 * var(--u));
     font-weight: 700;
     line-height: 1.1;
-    letter-spacing: 0.01em;
+    letter-spacing: 0;
   }
   .tb-rotate svg, .tb-swap svg, .tb-rotate lucide-angular, .tb-swap lucide-angular,
   .tb-undo svg, .tb-undo lucide-angular,
@@ -1402,27 +1402,61 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
   .tb-bonus-ready lucide-angular, .tb-bonus-gain { animation: none; }
 }
-/* Sélecteur de couleur */
-.tb-bonus-colors { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.45rem; margin: 0.4rem 0; }
-.tb-bonus-color {
+/* Mode bonus: panneau à la place des pièces, la grille reste entièrement visible */
+.tb-bonus-panel {
+  --x: 40; --y: 1180; --w: 944; --h: 320; --e: 8; --f: 1; --g: 0.9375;
+  z-index: 30;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.5rem 0.45rem 0.35rem;
-  border-radius: 1rem;
-  background: #f6e2bf;
-  box-shadow: 0 4px 0 var(--tb-cream-edge);
-  transition: transform 0.1s ease-out, opacity 0.2s;
-  cursor: pointer;
+  justify-content: center;
+  gap: calc(22 * var(--u));
+  padding: calc(20 * var(--u)) calc(36 * var(--u));
+  border-radius: calc(40 * var(--u));
+  text-align: center;
+  animation: tb-bonus-panel-in 220ms cubic-bezier(0.3, 0.7, 0.4, 1.2) both;
 }
-.tb-bonus-color:hover:not(:disabled) { transform: translateY(-2px); }
-.tb-bonus-color:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--tb-cream-edge); }
-.tb-bonus-color:disabled { opacity: 0.35; cursor: not-allowed; }
-.tb-bonus-color:focus-visible { outline: 3px solid var(--tb-teal-edge, #129a90); outline-offset: 2px; }
+@keyframes tb-bonus-panel-in {
+  from { opacity: 0; transform: translateY(calc(30 * var(--u))) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.tb-bonus-panel-title { font-size: calc(40 * var(--u)); font-weight: 800; line-height: 1.1; }
+.tb-bonus-panel-hint { font-size: calc(32 * var(--u)); font-weight: 600; opacity: 0.8; }
+.tb-bonus-panel-pick { display: flex; align-items: center; gap: calc(18 * var(--u)); font-size: calc(34 * var(--u)); font-weight: 700; }
+.tb-bonus-panel-actions { display: flex; gap: calc(24 * var(--u)); width: 100%; max-width: calc(700 * var(--u)); }
+.tb-bonus-panel-actions .tb-btn { flex: 1; height: calc(96 * var(--u)); font-size: calc(36 * var(--u)); font-weight: 700; --e: 8; }
+.tb-bonus-panel-actions .tb-btn:disabled { opacity: 0.45; }
+@media (min-aspect-ratio: 1/1) {
+  /* Écran large: le panneau couvre la colonne de gauche (score + bonus) */
+  .tb-bonus-panel { --x: 146; --y: 244; --w: 325; --h: 486; padding: calc(24 * var(--u)); gap: calc(26 * var(--u)); }
+  .tb-bonus-panel-title { font-size: calc(34 * var(--u)); }
+  .tb-bonus-panel-hint { font-size: calc(28 * var(--u)); }
+  .tb-bonus-panel-pick { font-size: calc(30 * var(--u)); }
+  .tb-bonus-panel-actions { flex-direction: column-reverse; gap: calc(18 * var(--u)); }
+  .tb-bonus-panel-actions .tb-btn { flex: none; height: calc(80 * var(--u)); font-size: calc(32 * var(--u)); }
+}
 .tb-bonus-swatch { display: block; width: 34px; height: 34px; }
-.tb-bonus-count { font-weight: 700; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
-.tb-bonus-progress { height: 1.9rem; }
+/* Le panneau recouvre le bouton Bonus: on le masque, sinon sa pastille dépasse */
+.tb-bonus-active { visibility: hidden; }
+
+/* Grille en mode bonus */
+.tb-layout .tb-board .cell-base { transition: opacity 0.2s, filter 0.2s, transform 0.2s; }
+.tb-board-bonus .cell-bonus-dim { opacity: 0.28; filter: saturate(0.4); }
+.tb-board-bonus .cell-bonus-pickable { cursor: pointer; animation: tb-bonus-pickable 1.4s ease-in-out infinite; }
+.tb-board-bonus .cell-bonus-target { cursor: pointer; animation: tb-bonus-target 0.9s ease-in-out infinite; z-index: 1; }
+@keyframes tb-bonus-pickable {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.94); }
+}
+@keyframes tb-bonus-target {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.06); filter: brightness(1.25); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tb-board-bonus .cell-bonus-pickable, .tb-board-bonus .cell-bonus-target { animation: none; }
+  .tb-board-bonus .cell-bonus-target { filter: brightness(1.2); }
+}
+.tb-bonus-toast-info { font-size: 0.95rem; white-space: normal; text-align: center; max-width: 90vw; width: max-content; border-radius: 1.2rem; }
 @media (max-aspect-ratio: 1/1) {
   .tb-layout .tb-bonus .tb-pill { background: var(--tb-coral, #f85e4e); color: #fff6e2; box-shadow: 0 calc(3 * var(--u)) 0 #c13f36; }
 }
