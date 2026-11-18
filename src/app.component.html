@@ -162,50 +162,100 @@
       <kbd class="tb-kbd tb-kbd-cream">Z</kbd>
       <span class="tb-pill" [class.tb-pill-empty]="undoCharges() === 0">{{ undoCharges() }}</span>
     </button>
-    <!-- Bonus: 1 nettoyage de couleur tous les 10 000 pts. La barre montre l'avancée vers le prochain. -->
-    <button
-      (click)="toggleBonusPick()"
-      class="tb-abs tb-btn tb-btn-gold tb-bonus"
-      [class.tb-bonus-ready]="bonusCharges() > 0"
+    <!-- == Bonus: réserve des 3 bonus + jauge vers le prochain palier == -->
+    <div class="tb-abs tb-card tb-bonus"
       [class.tb-bonus-gain]="bonusGainPulse()"
-      [class.tb-bonus-active]="bonusPickMode()"
-      [attr.aria-pressed]="bonusPickMode()"
-      [attr.aria-label]="i18n.t().bonusButton"
-      [attr.title]="i18n.t().bonusButton + ' — ' + i18n.translateWithParams('bonusNext', fmt(nextBonusAt()))">
-      <lucide-angular [img]="SparklesIcon"></lucide-angular>
-      <span class="tb-btn-text">{{ i18n.t().bonusShort }}</span>
-      <span class="tb-btn-cap">{{ i18n.t().bonusShort }}</span>
-      <kbd class="tb-kbd tb-kbd-cream">B</kbd>
-      @if (bonusCharges() > 0) {
-        <span class="tb-pill">{{ bonusCharges() }}</span>
-      }
-      <span class="tb-bonus-bar" aria-hidden="true">
-        <span class="tb-bonus-bar-fill" [style.width.%]="bonusProgress() * 100"></span>
-        <span class="tb-bonus-bar-text">{{ fmt(score()) }} / {{ fmt(nextBonusAt()) }}</span>
-      </span>
-    </button>
-    @if (bonusToast()) {
-      <div class="tb-bonus-toast" role="status">✨ {{ i18n.t().bonusGained }}</div>
-    }
+      [class.tb-bonus-active]="!!bonusPickMode() || bonusPending() > 0">
+      <div class="tb-bonus-slots">
+        @for (b of bonusTypes; track b.type) {
+          <button class="tb-btn tb-bonus-slot"
+            [class.tb-btn-gold]="bonusInventory()[b.type] > 0"
+            [class.tb-btn-cream]="bonusInventory()[b.type] === 0"
+            [class.tb-bonus-slot-empty]="bonusInventory()[b.type] === 0"
+            (click)="startBonus(b.type)"
+            [attr.aria-label]="bonusName(b.type) + ' — ' + bonusDesc(b.type) + ' (' + bonusInventory()[b.type] + ')'"
+            [attr.title]="bonusName(b.type) + ' — ' + bonusDesc(b.type)">
+            <lucide-angular [img]="b.icon"></lucide-angular>
+            <span class="tb-bonus-slot-count">{{ bonusInventory()[b.type] }}</span>
+          </button>
+        }
+      </div>
+      <div class="tb-bonus-gauge" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+        [attr.aria-valuenow]="Math.round(bonusProgress() * 100)"
+        [attr.aria-label]="i18n.translateWithParams('bonusNext', fmt(nextBonusAt()))">
+        <span class="tb-bonus-gauge-fill" [style.width.%]="bonusProgress() * 100"></span>
+        <span class="tb-bonus-gauge-text"><lucide-angular [img]="GiftIcon"></lucide-angular>{{ fmt(score()) }} / {{ fmt(nextBonusAt()) }}</span>
+      </div>
+    </div>
     @if (bonusInfoToast()) {
-      <div class="tb-bonus-toast tb-bonus-toast-info" role="status">{{ i18n.translateWithParams('bonusNone', fmt(nextBonusAt())) }}</div>
+      <div class="tb-bonus-toast tb-bonus-toast-info" role="status">{{ i18n.translateWithParams('bonusNext', fmt(nextBonusAt())) }}</div>
     }
 
-    <!-- == Mode bonus: la grille reste visible, on touche une couleur puis on confirme == -->
-    @if (bonusPickMode()) {
-      <div class="tb-abs tb-card tb-bonus-panel" role="dialog" [attr.aria-label]="i18n.t().bonusTitle">
-        <p class="tb-bonus-panel-title">✨ {{ i18n.t().bonusTitle }}</p>
-        @if (bonusPickTile(); as t) {
-          <div class="tb-bonus-panel-pick">
-            <span class="tb-bonus-swatch"><app-tile-preview [tile]="t" [cellPx]="34"></app-tile-preview></span>
-            <span>{{ i18n.translateWithParams('bonusCells', bonusPickCount().toString()) }}</span>
-          </div>
-        } @else {
-          <p class="tb-bonus-panel-hint">{{ i18n.t().bonusTapHint }}</p>
+    <!-- == Palier atteint: choix du bonus == -->
+    @if (bonusPending() > 0 && !bonusPickMode()) {
+      <div class="tb-abs tb-card tb-bonus-panel tb-bonus-choice" role="dialog" [attr.aria-label]="i18n.t().bonusChooseTitle">
+        <p class="tb-bonus-panel-title">🎁 {{ i18n.t().bonusChooseTitle }}</p>
+        <div class="tb-bonus-choices">
+          @for (b of bonusTypes; track b.type) {
+            <button class="tb-btn tb-btn-gold tb-bonus-choice-card" (click)="chooseBonus(b.type)"
+              [disabled]="bonusInventory()[b.type] >= MAX_BONUS">
+              <lucide-angular [img]="b.icon"></lucide-angular>
+              <span class="tb-bonus-choice-name">{{ bonusName(b.type) }}</span>
+              <span class="tb-bonus-choice-desc">{{ bonusDesc(b.type) }}</span>
+              <span class="tb-bonus-choice-count">{{ bonusInventory()[b.type] }} / {{ MAX_BONUS }}</span>
+            </button>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- == Bonus en cours: la grille reste visible (nettoyage, bombe) ou on choisit la couleur (pinceau) == -->
+    @if (bonusPickMode(); as mode) {
+      <div class="tb-abs tb-card tb-bonus-panel" role="dialog" [attr.aria-label]="bonusName(mode)">
+        @switch (mode) {
+          @case ('clear') {
+            <p class="tb-bonus-panel-title">{{ i18n.t().bonusTitle }}</p>
+            @if (bonusPickTile(); as t) {
+              <div class="tb-bonus-panel-pick">
+                <span class="tb-bonus-swatch"><app-tile-preview [tile]="t" [cellPx]="34"></app-tile-preview></span>
+                <span>{{ i18n.translateWithParams('bonusCells', bonusPickCount().toString()) }}</span>
+              </div>
+            } @else {
+              <p class="tb-bonus-panel-hint">{{ i18n.t().bonusTapHint }}</p>
+            }
+          }
+          @case ('bomb') {
+            <p class="tb-bonus-panel-title">{{ i18n.t().bonusBombTitle }}</p>
+            @if (bonusPickCount() > 0) {
+              <div class="tb-bonus-panel-pick"><span>{{ i18n.translateWithParams('bonusCells', bonusPickCount().toString()) }}</span></div>
+            } @else {
+              <p class="tb-bonus-panel-hint">{{ i18n.t().bonusBombHint }}</p>
+            }
+          }
+          @case ('paint') {
+            <p class="tb-bonus-panel-title">{{ i18n.t().bonusPaintTitle }}</p>
+            <div class="tb-paint-row">
+              @if (paintPreviewTile(); as pt) {
+                <span class="tb-paint-preview"><app-tile-preview [tile]="pt" [cellPx]="22"></app-tile-preview></span>
+              }
+              <div class="tb-paint-swatches">
+                @for (sw of paintSwatches; track sw.color) {
+                  <button class="tb-paint-swatch" (click)="pickPaintColor(sw.color)"
+                    [class.tb-paint-swatch-on]="bonusPickColor() === sw.color"
+                    [disabled]="currentTile()?.color === sw.color"
+                    [attr.aria-label]="sw.color">
+                    <app-tile-preview [tile]="sw" [cellPx]="30"></app-tile-preview>
+                  </button>
+                }
+              </div>
+            </div>
+          }
         }
         <div class="tb-bonus-panel-actions">
           <button class="tb-btn tb-btn-cream" (click)="cancelBonusPick()">{{ i18n.t().bonusCancel }}</button>
-          <button class="tb-btn tb-btn-gold" [disabled]="!bonusPickColor() || !canUseBonus()" (click)="confirmBonusPick()">{{ i18n.t().bonusConfirm }}</button>
+          <button class="tb-btn tb-btn-gold" [disabled]="!bonusPickReady() || !bonusIdle()" (click)="confirmBonusPick()">
+            {{ mode === 'clear' ? i18n.t().bonusConfirm : mode === 'bomb' ? i18n.t().bonusBombConfirm : i18n.t().bonusPaintConfirm }}
+          </button>
         </div>
       </div>
     }

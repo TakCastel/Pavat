@@ -325,16 +325,29 @@ export class GridComponent {
     return this.sanitizer.bypassSecurityTrustHtml(svgString);
   }
   
-  /** Mode bonus: la couleur visée brille, le reste s'efface */
+  /** La grille sert à viser (nettoyage, bombe). Le pinceau, lui, agit sur la pièce. */
+  protected gridPickMode = computed(() => {
+    const mode = this.gameService.bonusPickMode();
+    return mode === 'clear' || mode === 'bomb' ? mode : null;
+  });
+
+  /** Mode bonus: les cases visées brillent, le reste s'efface */
   getCellClass(row: number, col: number): string {
     const base = this.computeCellClass(row, col);
-    if (!this.gameService.bonusPickMode()) return base;
+    const mode = this.gridPickMode();
+    if (!mode) return base;
     const w = this.toWorldCoords(row, col);
     const cell = this.grid()[w.row]?.[w.col];
-    const picked = this.gameService.bonusPickColor();
-    if (!cell?.color || cell.blocked) return `${base} cell-bonus-dim`;
-    if (!picked) return `${base} cell-bonus-pickable`;
-    return cell.color === picked ? `${base} cell-bonus-target` : `${base} cell-bonus-dim`;
+    const targets = this.gameService.bonusTargetCells();
+    const key = `${w.row},${w.col}`;
+    if (!cell || cell.blocked) return `${base} cell-bonus-dim`;
+    if (targets.size === 0) {
+      // Rien de visé: on montre ce qu'on peut toucher
+      if (mode === 'bomb') return `${base} cell-bonus-aim`;
+      return cell.color ? `${base} cell-bonus-pickable` : `${base} cell-bonus-dim`;
+    }
+    if (!targets.has(key)) return `${base} cell-bonus-dim`;
+    return cell.color ? `${base} cell-bonus-target` : `${base} cell-bonus-zone`;
   }
 
   private computeCellClass(row: number, col: number): string {
@@ -487,7 +500,7 @@ export class GridComponent {
   }
 
   onGridMouseMove(event: MouseEvent): void {
-    if (this.gameService.bonusPickMode()) return;
+    if (this.gridPickMode()) return;
     if (this.currentTile()) {
       this._updateHoveredCellFromEvent(event);
     }
@@ -509,7 +522,7 @@ export class GridComponent {
 
   onGridClick(event?: MouseEvent): void {
     if (this.isShrinking()) return;
-    if (this.gameService.bonusPickMode()) {
+    if (this.gridPickMode()) {
       if (event && Date.now() - this.lastTouchTime >= 300) {
         this.pickBonusAt(event.clientX, event.clientY, event.currentTarget as HTMLElement);
       }
@@ -551,14 +564,14 @@ export class GridComponent {
     event.preventDefault();
     this.lastTouchTime = Date.now();
     const touch = event.changedTouches?.[0];
-    if (event.type === 'touchend' && touch && this.gameService.bonusPickMode() && !this.isShrinking()) {
+    if (event.type === 'touchend' && touch && this.gridPickMode() && !this.isShrinking()) {
       this.pickBonusAt(touch.clientX, touch.clientY, event.currentTarget as HTMLElement);
     }
   }
 
   // Gestion des événements de drag depuis la tuile
   onTileDragMove(event: CustomEvent): void {
-    if (!this.currentTile() || this.isShrinking() || this.gameService.bonusPickMode()) return;
+    if (!this.currentTile() || this.isShrinking() || this.gridPickMode()) return;
     const gridElement = event.detail.target as HTMLElement;
     if (!gridElement) return;
     

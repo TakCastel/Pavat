@@ -2,7 +2,7 @@
   <app-grid-indicator></app-grid-indicator>
     <div 
       #board
-      [class.tb-board-bonus]="gameService.bonusPickMode()"
+      [class.tb-board-bonus]="!!gridPickMode()"
       class="grid tb-board aspect-square w-full max-w-full max-h-full touch-none"
       [style]="gridStyles()"
       [style.--pulse-delay]="pulseDelay()"
