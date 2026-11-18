@@ -43,8 +43,12 @@ Ce document decrit toutes les regles et mecanismes observes dans le jeu.
 - Miroir: renverse horizontalement la tuile (si asymetrique).
 - Echange: permute tuile courante et suivante.
 - Annuler: reprend le dernier coup (charges gagnees en validant des groupes).
-- Bonus "nettoyer une couleur": tous les 10 000 points, on gagne un bonus (3 en reserve au maximum).
-  Il retire de la grille toutes les cases de la couleur choisie (sans rapporter de points).
+- Bonus: a chaque palier de score, on choisit un bonus parmi trois (3 de chaque type en reserve au maximum).
+  Paliers: 10 000, 22 500, 37 500, 55 000, 75 000, 97 500... (l'ecart grandit de 2 500 a chaque palier).
+  - Nettoyage: retire de la grille toutes les cases d'une couleur (touchee sur la grille).
+  - Pinceau: repeint la piece actuelle dans la couleur choisie.
+  - Bombe: fait exploser la zone 3x3 autour de la case touchee.
+  Les bonus ne rapportent pas de points. Annuler reprend un bonus utilise et le rend.
 
 ## Lignes et colonnes completes
 - Une ligne ou colonne complete doit etre remplie d'une SEULE couleur.

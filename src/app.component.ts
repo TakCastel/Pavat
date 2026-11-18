@@ -1,8 +1,8 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, OnInit, Injector, afterNextRender } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { GameService } from './services/game.service';
-import { Tile } from './models/game.model';
+import { GameService, MAX_BONUS_PER_TYPE } from './services/game.service';
+import { Tile, BonusType } from './models/game.model';
 import { GridComponent } from './components/grid/grid.component';
 import { TilePreviewComponent } from './components/tile-preview/tile-preview.component';
 import { TutorialComponent } from './components/tutorial/tutorial.component';
@@ -13,7 +13,7 @@ import { OptionsService } from './services/options.service';
 import { ColorblindIconService } from './services/colorblind-icon.service';
 import { OptionsMenuComponent } from './components/options-menu/options-menu.component';
 import { LandingPageComponent } from './components/landing-page/landing-page.component';
-import { LucideAngularModule, Volume2, VolumeX, Sun, Moon, Sparkles, ShieldCheck, Undo2, RotateCw, ArrowLeftRight } from 'lucide-angular';
+import { LucideAngularModule, Volume2, VolumeX, Sun, Moon, Sparkles, ShieldCheck, Undo2, RotateCw, ArrowLeftRight, Eraser, Paintbrush, Bomb, Gift } from 'lucide-angular';
 
 import { CookieBannerComponent } from './components/cookie-banner/cookie-banner.component';
 @Component({
@@ -28,7 +28,6 @@ import { CookieBannerComponent } from './components/cookie-banner/cookie-banner.
     '(window:keydown.space)': 'tutorialService.isTutorialActive() || rotateTile()',
     '(window:keydown.f)': 'tutorialService.isTutorialActive() || onSwapKeyPress()',
     '(window:keydown.z)': 'tutorialService.isTutorialActive() || onUndoKeyPress()',
-    '(window:keydown.b)': 'tutorialService.isTutorialActive() || toggleBonusPick()',
     '(window:keydown.escape)': 'cancelBonusPick()',
     '(window:keydown.enter)': 'bonusPickMode() && confirmBonusPick()',
   },
@@ -112,53 +111,106 @@ export class AppComponent implements OnInit {
   });
   minValidatedGroupSize = this.gameService.minValidatedGroupSize;
 
-  // ---------- Bonus "nettoyer une couleur" (1 tous les 10 000 pts) ----------
+  // ---------- Bonus: 1 choix à chaque palier (10 000, 25 000, 45 000…) ----------
+  readonly GiftIcon = Gift;
+  readonly MAX_BONUS = MAX_BONUS_PER_TYPE;
+  /** Les trois bonus, dans l'ordre d'affichage */
+  readonly bonusTypes: { type: BonusType; icon: any }[] = [
+    { type: 'clear', icon: Eraser },
+    { type: 'paint', icon: Paintbrush },
+    { type: 'bomb', icon: Bomb },
+  ];
+  bonusInventory = this.gameService.bonusInventory;
   bonusCharges = this.gameService.bonusCharges;
-  canUseBonus = this.gameService.canUseBonus;
+  bonusPending = this.gameService.bonusPending;
   bonusProgress = this.gameService.bonusProgress;
   nextBonusAt = this.gameService.nextBonusAt;
   bonusPickMode = this.gameService.bonusPickMode;
   bonusPickColor = this.gameService.bonusPickColor;
   bonusPickCount = this.gameService.bonusPickCount;
-  /** Pastille de la couleur visée, dessinée comme une vraie pièce (palette et formes daltonien comprises) */
+  bonusPickReady = this.gameService.bonusPickReady;
+  bonusIdle = this.gameService.bonusIdle;
+
+  bonusName(type: BonusType): string {
+    const t = this.i18n.t();
+    return type === 'clear' ? t.bonusClearName : type === 'paint' ? t.bonusPaintName : t.bonusBombName;
+  }
+  bonusDesc(type: BonusType): string {
+    const t = this.i18n.t();
+    return type === 'clear' ? t.bonusClearDesc : type === 'paint' ? t.bonusPaintDesc : t.bonusBombDesc;
+  }
+
+  /** Pastille de la couleur visée (nettoyage), dessinée comme une vraie pièce */
   bonusPickTile = computed<Tile | null>(() => {
     const color = this.bonusPickColor();
     return color ? { id: -1, shape: [[1]], color, width: 1, height: 1, barycenter: { r: 0, c: 0 } } : null;
   });
-  /** Sans bonus en réserve: petit message qui dit combien de points il faut */
+  /** Pinceau: une pastille par couleur */
+  readonly paintSwatches: Tile[] = ['blue', 'red', 'green', 'yellow', 'purple'].map((color, i) => ({
+    id: -10 - i, shape: [[1]], color, width: 1, height: 1, barycenter: { r: 0, c: 0 },
+  }));
+  /** Pinceau: aperçu de la pièce actuelle dans la couleur choisie */
+  paintPreviewTile = computed<Tile | null>(() => {
+    const tile = this.currentTile();
+    if (!tile) return null;
+    return { ...tile, id: -100, color: this.bonusPickColor() ?? tile.color };
+  });
+
+  /** Sans bonus de ce type en réserve: petit message qui dit le prochain palier */
   protected bonusInfoToast = signal(false);
   private bonusInfoTimer: any = null;
-  /** Le mode visée s'arrête tout seul si le jeu ne permet plus le bonus (rétrécissement, fin de partie) */
+  /** Le mode bonus s'arrête tout seul si le jeu ne le permet plus (rétrécissement, fin de partie) */
   private bonusPickGuard = effect(() => {
-    if (this.bonusPickMode() && !this.gameService.canPickBonus()) this.gameService.cancelBonusPick();
+    const mode = this.bonusPickMode();
+    if (mode && !this.gameService.canStartBonus(mode)) this.gameService.cancelBonusPick();
   });
   protected bonusGainPulse = signal(false);
-  protected bonusToast = signal(false);
-  private bonusToastTimer: any = null;
   private bonusGainEffect = effect(() => {
     if (!this.gameService.bonusGain()) return;
     this.bonusGainPulse.set(false);
     requestAnimationFrame(() => this.bonusGainPulse.set(true));
     setTimeout(() => this.bonusGainPulse.set(false), 900);
-    this.bonusToast.set(true);
-    clearTimeout(this.bonusToastTimer);
-    this.bonusToastTimer = setTimeout(() => this.bonusToast.set(false), 2600);
+  });
+  /** Pièce repeinte: petit éclat sur la carte de la pièce actuelle */
+  private paintEffect = effect(() => {
+    if (!this.gameService.paintEvent()) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    afterNextRender(() => {
+      const el = document.querySelector('.tb-piece-cur .tb-piece-slot > div') as HTMLElement | null;
+      el?.animate(
+        [
+          { transform: 'scale(1)', filter: 'brightness(1)' },
+          { transform: 'scale(1.18) rotate(-4deg)', filter: 'brightness(1.8)', offset: 0.35 },
+          { transform: 'scale(0.96) rotate(2deg)', filter: 'brightness(1.1)', offset: 0.7 },
+          { transform: 'scale(1)', filter: 'brightness(1)' },
+        ],
+        { duration: 520, easing: 'ease-out' }
+      );
+    }, { injector: this.injector });
   });
 
-  /** Bouton Bonus: entre (ou sort) du mode visée sur la grille */
-  toggleBonusPick(): void {
+  /** Bouton d'un bonus: le lance (ou l'arrête s'il est déjà en cours) */
+  startBonus(type: BonusType): void {
     if (this.tutorialService.isTutorialActive()) return;
-    if (this.bonusPickMode()) {
+    if (this.bonusPickMode() === type) {
       this.gameService.cancelBonusPick();
       return;
     }
-    if (this.bonusCharges() > 0) {
-      this.gameService.startBonusPick();
+    if (this.bonusInventory()[type] > 0) {
+      this.gameService.startBonusPick(type);
     } else {
       this.bonusInfoToast.set(true);
       clearTimeout(this.bonusInfoTimer);
       this.bonusInfoTimer = setTimeout(() => this.bonusInfoToast.set(false), 2600);
     }
+  }
+
+  chooseBonus(type: BonusType): void {
+    this.gameService.chooseBonus(type);
+  }
+
+  pickPaintColor(color: string): void {
+    this.gameService.pickBonusColor(color);
   }
 
   cancelBonusPick(): void {
@@ -180,8 +232,10 @@ export class AppComponent implements OnInit {
 
   /** 4150 → "4 150" */
   fmt(n: number): string {
-    return n.toLocaleString('fr-FR').replace(/[\u202f\u00a0,]/g, ' ');
+    return AppComponent.NUMBER_FORMAT.format(n).replace(/[\u202f\u00a0,]/g, ' ');
   }
+  /** Formateur créé une seule fois: toLocaleString en recrée un à chaque appel (coûteux à chaque rendu) */
+  private static readonly NUMBER_FORMAT = new Intl.NumberFormat('fr-FR');
 
   isDragging = signal(false);
   isHintTooltipVisible = signal(false);

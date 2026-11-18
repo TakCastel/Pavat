@@ -1,5 +1,5 @@
 import { Injectable, signal, computed, WritableSignal, inject } from '@angular/core';
-import { GameState, Cell, Tile } from '../models/game.model';
+import { GameState, Cell, Tile, BonusType, BonusInventory } from '../models/game.model';
 import { TutorialService } from './tutorial.service';
 import { SoundService } from './sound.service';
 
@@ -80,9 +80,25 @@ const UNDO_COST_GROWTH = 1.5;
 const STARTING_UNDO_CHARGES = 1;
 /** Points rapportés par une case validée (×multiplicateur de taille de grille) */
 const VALIDATED_CELL_POINTS = 15;
-/** Un bonus "nettoyer une couleur" est gagné à chaque palier de score */
-export const BONUS_POINTS_STEP = 10000;
-const MAX_BONUS_CHARGES = 3;
+/**
+ * Paliers de bonus de plus en plus espacés, sans devenir inaccessibles:
+ * 10 000, 22 500, 37 500, 55 000, 75 000, 97 500… (l'écart grandit de 2 500 à chaque palier).
+ * Un seul bonus par palier: le joueur le choisit.
+ */
+const BONUS_FIRST_STEP = 10000;
+const BONUS_STEP_GROWTH = 2500;
+export function bonusThreshold(n: number): number {
+  return n <= 0 ? 0 : BONUS_FIRST_STEP * n + (BONUS_STEP_GROWTH * n * (n - 1)) / 2;
+}
+function bonusThresholdsReached(score: number): number {
+  let n = 0;
+  while (bonusThreshold(n + 1) <= score) n++;
+  return n;
+}
+/** Réserve maximale par type de bonus */
+export const MAX_BONUS_PER_TYPE = 3;
+export const BONUS_TYPES: BonusType[] = ['clear', 'paint', 'bomb'];
+const EMPTY_INVENTORY: BonusInventory = { clear: 0, paint: 0, bomb: 0 };
 
 interface UndoSnapshot {
   grid: Cell[][];
@@ -94,9 +110,17 @@ interface UndoSnapshot {
   undoCharges: number;
   undoProgressPoints: number;
   undoUnlocked: number;
-  bonusCharges: number;
+  bonusInventory: BonusInventory;
   bonusEarned: number;
+  bonusPending: number;
 }
+
+/** Bonus de nettoyage ou bombe: cases qui explosent, en cascade depuis la case touchée (`delay` en ms) */
+export interface ColorBurstEvent { id: number; size: number; color: string; cells: { r: number; c: number; delay: number }[]; }
+/** Décalage de la cascade d'explosions par case de distance */
+const COLOR_BURST_STAGGER = 55;
+/** Durée d'explosion d'une case, après son délai */
+const COLOR_BURST_CELL_DURATION = 460;
 
 /** Un bonus vient d'être gagné (pour animer le bouton et afficher un message) */
 export interface BonusGainEvent { id: number; count: number; }
@@ -134,32 +158,76 @@ export class GameService {
     !this.state().isGameOver
   );
   public readonly previewLinePoints = this._previewLinePoints.asReadonly();
-  public readonly bonusCharges = computed(() => this.state().bonusCharges ?? 0);
-  /** Score à atteindre pour le prochain bonus */
-  public readonly nextBonusAt = computed(() => ((this.state().bonusEarned ?? 0) + 1) * BONUS_POINTS_STEP);
-  /** Progression (0 → 1) vers le prochain bonus */
+  public readonly bonusInventory = computed<BonusInventory>(() => this.state().bonusInventory ?? EMPTY_INVENTORY);
+  /** Total des bonus en réserve, tous types confondus */
+  public readonly bonusCharges = computed(() => BONUS_TYPES.reduce((n, t) => n + this.bonusInventory()[t], 0));
+  /** Paliers franchis en attente d'un choix */
+  public readonly bonusPending = computed(() => this.state().bonusPending ?? 0);
+  /** Score à atteindre pour le prochain palier */
+  public readonly nextBonusAt = computed(() => bonusThreshold((this.state().bonusEarned ?? 0) + 1));
+  /** Progression (0 → 1) entre le palier précédent et le suivant */
   public readonly bonusProgress = computed(() => {
-    const prev = (this.state().bonusEarned ?? 0) * BONUS_POINTS_STEP;
-    return Math.max(0, Math.min(1, (this.state().score - prev) / BONUS_POINTS_STEP));
+    const earned = this.state().bonusEarned ?? 0;
+    const prev = bonusThreshold(earned);
+    const next = bonusThreshold(earned + 1);
+    return Math.max(0, Math.min(1, (this.state().score - prev) / (next - prev)));
   });
-  public readonly canUseBonus = computed(() =>
-    (this.state().bonusCharges ?? 0) > 0 &&
-    !this._isPlacementAnimating() &&
-    !this.state().isShrinking &&
-    !this.state().isGameOver &&
-    this.state().grid.some(row => row.some(cell => cell.color !== null && !cell.blocked))
+  /** Le jeu permet d'utiliser un bonus maintenant (pas d'animation ni de rétrécissement en cours) */
+  public readonly bonusIdle = computed(() =>
+    !this._isPlacementAnimating() && !this.state().isShrinking && !this.state().isGameOver
   );
-  /** Mode "viser": le joueur touche une case de la grille pour choisir la couleur à nettoyer */
-  private _bonusPickMode = signal(false);
+  public canUseBonusType(type: BonusType): boolean {
+    if (!this.bonusIdle() || this.bonusInventory()[type] <= 0) return false;
+    if (type === 'paint') return !!this.state().currentTile;
+    return this.state().grid.some(row => row.some(cell => cell.color !== null && !cell.blocked));
+  }
+  /** Bonus en cours d'utilisation (mode visée sur la grille, ou choix de couleur pour le pinceau) */
+  private _bonusPickMode = signal<BonusType | null>(null);
   public readonly bonusPickMode = this._bonusPickMode.asReadonly();
+  /** Nettoyage: couleur visée. Pinceau: nouvelle couleur de la pièce. */
   private _bonusPickColor = signal<string | null>(null);
   public readonly bonusPickColor = this._bonusPickColor.asReadonly();
-  /** Nombre de cases qui partiront avec la couleur visée */
-  public readonly bonusPickCount = computed(() => {
-    const color = this._bonusPickColor();
-    if (!color) return 0;
-    return this.grid().reduce((n, row) => n + row.filter(c => c.color === color && !c.blocked).length, 0);
+  /** Bombe: case au centre de l'explosion */
+  private _bonusPickCenter = signal<{ r: number; c: number } | null>(null);
+  /** Cases touchées par le bonus visé (clés "r,c"), pour les mettre en évidence */
+  public readonly bonusTargetCells = computed<Set<string>>(() => {
+    const mode = this._bonusPickMode();
+    const grid = this.grid();
+    const keys = new Set<string>();
+    if (mode === 'clear') {
+      const color = this._bonusPickColor();
+      if (!color) return keys;
+      grid.forEach((row, r) => row.forEach((cell, c) => { if (cell.color === color && !cell.blocked) keys.add(`${r},${c}`); }));
+    } else if (mode === 'bomb') {
+      const center = this._bonusPickCenter();
+      if (!center) return keys;
+      for (let r = center.r - 1; r <= center.r + 1; r++) {
+        for (let c = center.c - 1; c <= center.c + 1; c++) {
+          if (grid[r]?.[c] && !grid[r][c].blocked) keys.add(`${r},${c}`);
+        }
+      }
+    }
+    return keys;
   });
+  /** Nombre de cases pleines qui partiront */
+  public readonly bonusPickCount = computed(() => {
+    const grid = this.grid();
+    let n = 0;
+    this.bonusTargetCells().forEach(key => {
+      const [r, c] = key.split(',').map(Number);
+      if (grid[r][c].color) n++;
+    });
+    return n;
+  });
+  public readonly bonusPickReady = computed(() => {
+    const mode = this._bonusPickMode();
+    if (mode === 'paint') return !!this._bonusPickColor() && this._bonusPickColor() !== this.state().currentTile?.color;
+    return this.bonusPickCount() > 0;
+  });
+  /** Case touchée en mode visée: point de départ de la cascade d'explosions */
+  private _bonusPickOrigin: { r: number; c: number } | null = null;
+  private _colorBurst = signal<ColorBurstEvent | null>(null);
+  public readonly colorBurst = this._colorBurst.asReadonly();
   private _bonusGain = signal<BonusGainEvent | null>(null);
   public readonly bonusGain = this._bonusGain.asReadonly();
   public readonly shrinkPoints = computed(() => {
@@ -240,8 +308,9 @@ export class GameService {
       undoCharges: STARTING_UNDO_CHARGES,
       undoProgressPoints: 0,
       undoUnlocked: 0,
-      bonusCharges: 0,
+      bonusInventory: { ...EMPTY_INVENTORY },
       bonusEarned: 0,
+      bonusPending: 0,
     };
   }
 
@@ -277,8 +346,9 @@ export class GameService {
       undoCharges: state.undoCharges ?? 0,
       undoProgressPoints: state.undoProgressPoints ?? 0,
       undoUnlocked: state.undoUnlocked ?? 0,
-      bonusCharges: state.bonusCharges ?? 0,
+      bonusInventory: { ...(state.bonusInventory ?? EMPTY_INVENTORY) },
       bonusEarned: state.bonusEarned ?? 0,
+      bonusPending: state.bonusPending ?? 0,
     });
     if (this._undoStack.length > 30) {
       this._undoStack.shift();
@@ -364,8 +434,9 @@ export class GameService {
       // Si le coup annulé avait débloqué une annulation, elle est reprise: le coût redescend aussi
       undoUnlocked: snapshot.undoUnlocked,
       // Un bonus gagné par le coup annulé est repris; un bonus utilisé puis annulé est rendu
-      bonusCharges: snapshot.bonusCharges,
+      bonusInventory: snapshot.bonusInventory,
       bonusEarned: snapshot.bonusEarned,
+      bonusPending: snapshot.bonusPending,
       lastPlacedTileId: null,
       isShrinking: false,
       isShrinkImminent: false,
@@ -396,8 +467,9 @@ export class GameService {
         undoCharges: state.undoCharges,
         undoProgressPoints: state.undoProgressPoints,
         undoUnlocked: state.undoUnlocked,
-        bonusCharges: state.bonusCharges,
+        bonusInventory: state.bonusInventory,
         bonusEarned: state.bonusEarned,
+        bonusPending: state.bonusPending,
       };
       localStorage.setItem(STORAGE_KEY_GAME_STATE, JSON.stringify(stateToSave));
     } catch (error) {
@@ -433,8 +505,15 @@ export class GameService {
         undoCharges: savedState.undoCharges ?? STARTING_UNDO_CHARGES,
         undoProgressPoints: savedState.undoProgressPoints ?? 0,
         undoUnlocked: savedState.undoUnlocked ?? 0,
-        bonusCharges: savedState.bonusCharges ?? 0,
-        bonusEarned: savedState.bonusEarned ?? Math.floor((savedState.score || 0) / BONUS_POINTS_STEP),
+        // Ancienne sauvegarde (un seul type de bonus): les bonus deviennent des nettoyages
+        // et les paliers sont recalculés avec la nouvelle progression
+        bonusInventory: savedState.bonusInventory
+          ? { ...EMPTY_INVENTORY, ...savedState.bonusInventory }
+          : { ...EMPTY_INVENTORY, clear: Math.min(MAX_BONUS_PER_TYPE, savedState.bonusCharges ?? 0) },
+        bonusEarned: savedState.bonusInventory
+          ? (savedState.bonusEarned ?? 0)
+          : bonusThresholdsReached(savedState.score || 0),
+        bonusPending: savedState.bonusPending ?? 0,
       };
 
       // Restaurer le compteur de tileId
@@ -624,50 +703,95 @@ export class GameService {
       }
   }
 
-  /** Donne un bonus pour chaque palier de score franchi (3 en réserve au maximum). */
+  /** Chaque palier franchi donne un choix de bonus (voir chooseBonus). */
   private grantBonusForScore(): void {
     const s = this.state();
-    const reached = Math.floor(s.score / BONUS_POINTS_STEP);
+    const reached = bonusThresholdsReached(s.score);
     const earned = s.bonusEarned ?? 0;
     if (reached <= earned) return;
-    const charges = s.bonusCharges ?? 0;
-    const newCharges = Math.min(MAX_BONUS_CHARGES, charges + (reached - earned));
-    this._gameState.update(st => ({ ...st, bonusEarned: reached, bonusCharges: newCharges }));
-    if (newCharges > charges) {
-      this._bonusGain.set({ id: ++this._animSeq, count: newCharges - charges });
-    }
+    // Plus rien à choisir si les trois réserves sont pleines
+    const anyRoom = BONUS_TYPES.some(t => (s.bonusInventory ?? EMPTY_INVENTORY)[t] < MAX_BONUS_PER_TYPE);
+    this._gameState.update(st => ({
+      ...st,
+      bonusEarned: reached,
+      bonusPending: anyRoom ? (st.bonusPending ?? 0) + (reached - earned) : (st.bonusPending ?? 0),
+    }));
+    if (anyRoom) this._bonusGain.set({ id: ++this._animSeq, count: reached - earned });
   }
 
-  /** Le mode visée est possible tant qu'il reste un bonus et que la grille n'est pas en train de changer */
-  public readonly canPickBonus = computed(() =>
-    (this.state().bonusCharges ?? 0) > 0 && !this.state().isShrinking && !this.state().isGameOver
-  );
+  /** Le joueur choisit le bonus de son palier. */
+  public chooseBonus(type: BonusType): boolean {
+    const s = this.state();
+    const inv = s.bonusInventory ?? EMPTY_INVENTORY;
+    if ((s.bonusPending ?? 0) <= 0 || inv[type] >= MAX_BONUS_PER_TYPE) return false;
+    const newInv = { ...inv, [type]: inv[type] + 1 };
+    const stillRoom = BONUS_TYPES.some(t => newInv[t] < MAX_BONUS_PER_TYPE);
+    this._gameState.update(st => ({
+      ...st,
+      bonusInventory: newInv,
+      bonusPending: stillRoom ? Math.max(0, (st.bonusPending ?? 0) - 1) : 0,
+    }));
+    this.saveGameState();
+    this.soundService.playSwapSound();
+    return true;
+  }
 
-  public startBonusPick(): boolean {
-    if (!this.canPickBonus()) return false;
+  /** Un bonus peut être lancé (même si la grille est vide: on vérifie à la confirmation) */
+  public canStartBonus(type: BonusType): boolean {
+    const s = this.state();
+    return (s.bonusInventory ?? EMPTY_INVENTORY)[type] > 0 && !s.isShrinking && !s.isGameOver;
+  }
+
+  public startBonusPick(type: BonusType): boolean {
+    if (!this.canStartBonus(type)) return false;
     this._bonusPickColor.set(null);
-    this._bonusPickMode.set(true);
+    this._bonusPickCenter.set(null);
+    this._bonusPickOrigin = null;
+    this._bonusPickMode.set(type);
     return true;
   }
 
   public cancelBonusPick(): void {
-    this._bonusPickMode.set(false);
+    this._bonusPickMode.set(null);
     this._bonusPickColor.set(null);
+    this._bonusPickCenter.set(null);
+    this._bonusPickOrigin = null;
   }
 
-  /** Vise la couleur d'une case touchée (une case vide ne change rien). */
+  /** Mode visée: une case touchée vise sa couleur (nettoyage) ou devient le centre de la bombe. */
   public pickBonusCell(row: number, col: number): void {
-    if (!this._bonusPickMode()) return;
+    const mode = this._bonusPickMode();
     const cell = this.grid()[row]?.[col];
-    if (!cell?.color || cell.blocked) return;
-    this._bonusPickColor.set(cell.color);
+    if (!cell || cell.blocked) return;
+    if (mode === 'clear') {
+      if (!cell.color) return;
+      this._bonusPickColor.set(cell.color);
+    } else if (mode === 'bomb') {
+      this._bonusPickCenter.set({ r: row, c: col });
+    } else {
+      return;
+    }
+    this._bonusPickOrigin = { r: row, c: col };
+    this.soundService.playRotateSound();
+  }
+
+  /** Pinceau: couleur choisie pour la pièce actuelle (appliquée à la confirmation). */
+  public pickBonusColor(color: string): void {
+    if (this._bonusPickMode() !== 'paint' || !COLORS.includes(color)) return;
+    this._bonusPickColor.set(color);
     this.soundService.playRotateSound();
   }
 
   public confirmBonusPick(): boolean {
-    const color = this._bonusPickColor();
-    if (!color) return false;
-    const ok = this.useColorClearBonus(color);
+    const mode = this._bonusPickMode();
+    let ok = false;
+    if (mode === 'clear' || mode === 'bomb') {
+      const keys = [...this.bonusTargetCells()];
+      ok = this.useBurstBonus(mode, keys, this._bonusPickOrigin);
+    } else if (mode === 'paint') {
+      const color = this._bonusPickColor();
+      ok = !!color && this.usePaintBonus(color);
+    }
     this.cancelBonusPick();
     return ok;
   }
@@ -683,49 +807,86 @@ export class GameService {
     return counts;
   }
 
-  /**
-   * Bonus: retire de la grille toutes les cases de la couleur choisie.
-   * Ne rapporte pas de points, mais libère de la place (et peut éviter un rétrécissement).
-   */
-  public useColorClearBonus(color: string): boolean {
-    if (!this.canUseBonus()) return false;
-    const grid = this.grid();
-    const cellsToClear = new Set<string>();
-    grid.forEach((row, r) => row.forEach((cell, c) => {
-      if (cell.color === color && !cell.blocked) cellsToClear.add(`${r},${c}`);
-    }));
-    if (cellsToClear.size === 0) return false;
+  private consumeBonus(type: BonusType): void {
+    this._gameState.update(s => {
+      const inv = s.bonusInventory ?? EMPTY_INVENTORY;
+      return { ...s, bonusInventory: { ...inv, [type]: Math.max(0, inv[type] - 1) } };
+    });
+  }
 
-    this.cancelBonusPick();
+  /** Raccourci: nettoyage d'une couleur (cascade depuis `origin`, sinon le centre). */
+  public useColorClearBonus(color: string, origin: { r: number; c: number } | null = null): boolean {
+    const keys: string[] = [];
+    this.grid().forEach((row, r) => row.forEach((cell, c) => {
+      if (cell.color === color && !cell.blocked) keys.push(`${r},${c}`);
+    }));
+    return this.useBurstBonus('clear', keys, origin);
+  }
+
+  /**
+   * Nettoyage ou bombe: les cases pleines visées explosent en cascade depuis `origin`,
+   * puis quittent la grille. Ne rapporte pas de points, mais libère de la place
+   * (et peut éviter un rétrécissement).
+   */
+  private useBurstBonus(type: 'clear' | 'bomb', keys: string[], origin: { r: number; c: number } | null): boolean {
+    if (!this.canUseBonusType(type)) return false;
+    const grid = this.grid();
+    const cells = keys
+      .map(k => k.split(',').map(Number))
+      .filter(([r, c]) => grid[r]?.[c]?.color && !grid[r][c].blocked)
+      .map(([r, c]) => ({ r, c }));
+    if (cells.length === 0) return false;
+
+    const size = grid.length;
+    const from = origin ?? { r: (size - 1) / 2, c: (size - 1) / 2 };
+    const burstCells = cells.map(({ r, c }) => ({
+      r, c, delay: Math.round(Math.hypot(r - from.r, c - from.c) * COLOR_BURST_STAGGER),
+    }));
+    const duration = Math.max(...burstCells.map(b => b.delay)) + COLOR_BURST_CELL_DURATION;
+
     // Le rétrécissement annoncé est suspendu: on revérifie une fois la place libérée
     clearTimeout(this.shrinkTimeout);
     this.pushUndoSnapshot();
     this._isPlacementAnimating.set(true);
-    const gridWithClearing = grid.map((row, r) =>
-      row.map((cell, c) => cellsToClear.has(`${r},${c}`) ? { ...cell, clearing: true } : cell)
-    );
-    this._gameState.update(s => ({
-      ...s,
-      grid: gridWithClearing,
-      bonusCharges: Math.max(0, (s.bonusCharges ?? 0) - 1),
-      isShrinkImminent: false,
-    }));
+    this.consumeBonus(type);
+    this._gameState.update(s => ({ ...s, isShrinkImminent: false }));
     this.saveGameState();
-    this.soundService.playClearSound(Math.max(1, Math.ceil(cellsToClear.size / 4)));
+    this._colorBurst.set({ id: ++this._animSeq, size, color: grid[cells[0].r][cells[0].c].color!, cells: burstCells });
 
+    // Les cases ne quittent la grille qu'une fois toutes explosées
+    const toClear = new Set(cells.map(({ r, c }) => `${r},${c}`));
     setTimeout(() => {
       const cleared = this.grid().map((row, r) =>
-        row.map((cell, c) => cellsToClear.has(`${r},${c}`)
+        row.map((cell, c) => toClear.has(`${r},${c}`)
           ? { color: null, tileId: null, blocked: cell.blocked }
-          : { ...cell, clearing: false })
+          : { ...cell })
       );
       const { grid: validatedGrid } = this._updateValidatedGroups(cleared);
       this._gameState.update(s => ({ ...s, grid: validatedGrid }));
+      this.saveGameState();
       this._isPlacementAnimating.set(false);
       this.checkPlayableOrShrink();
-    }, ANIMATION_DURATION);
+    }, duration);
     return true;
   }
+
+  /** Pinceau: la pièce actuelle prend la couleur choisie. */
+  private usePaintBonus(color: string): boolean {
+    const tile = this.state().currentTile;
+    if (!this.canUseBonusType('paint') || !tile || tile.color === color) return false;
+    this.pushUndoSnapshot();
+    this.consumeBonus('paint');
+    this._gameState.update(s => ({ ...s, currentTile: s.currentTile ? { ...s.currentTile, color } : null }));
+    this.saveGameState();
+    this._paintEvent.set({ id: ++this._animSeq });
+    this.soundService.playVictorySound(1);
+    // Une pièce repeinte ne change pas de forme: inutile de revérifier le rétrécissement
+    return true;
+  }
+
+  /** Incrémenté quand la pièce est repeinte (pour l'animer) */
+  private _paintEvent = signal<{ id: number } | null>(null);
+  public readonly paintEvent = this._paintEvent.asReadonly();
 
   public rotateCurrentTile(): void {
     const tile = this.currentTile();
