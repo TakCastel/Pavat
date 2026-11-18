@@ -686,17 +686,17 @@ body::before {
 .tb-gear        { --x: 913; --y: 56;  --w: 80;  --h: 72;  --e: 8;  --f: 0; }
 .tb-scorecard   { --x: 80;  --y: 218; --w: 864; --h: 107; --e: 8;  --f: 0.12; }
 .tb-board-box   { --x: 111; --y: 357; --w: 800; --h: 750; --f: 0.3; --gw: 1; --gh: 0.9375; --gx: 0.5; }
-.tb-piece-cur   { --x: 40;  --y: 1244; --w: 560; --h: 256; --e: 8; --f: 1; --g: 0.9375; }
-.tb-piece-next  { --x: 620; --y: 1244; --w: 364; --h: 128; --e: 8; --f: 1; --g: 0.9375; }
+.tb-piece-cur   { --x: 40;  --y: 1250; --w: 560; --h: 250; --e: 8; --f: 1; --g: 0.9375; }
+.tb-piece-next  { --x: 620; --y: 1250; --w: 364; --h: 124; --e: 8; --f: 1; --g: 0.9375; }
 /* Rotate n'agit que sur la pièce courante: on le pose dans sa carte, à droite */
-.tb-rotate      { --x: 470; --y: 1358; --w: 114; --h: 118; --e: 10; --f: 1; --g: 0.9375; }
+.tb-rotate      { --x: 470; --y: 1362; --w: 114; --h: 116; --e: 10; --f: 1; --g: 0.9375; }
 /* Sous la suivante: Échanger, Annuler, Bonus (icône + libellé) */
-.tb-swap        { --x: 620; --y: 1386; --w: 174; --h: 108; --e: 10; --f: 1; --g: 0.9375; }
-.tb-undo        { --x: 810; --y: 1386; --w: 174; --h: 108; --e: 10; --f: 1; --g: 0.9375; }
+.tb-swap        { --x: 620; --y: 1388; --w: 174; --h: 106; --e: 10; --f: 1; --g: 0.9375; }
+.tb-undo        { --x: 810; --y: 1388; --w: 174; --h: 106; --e: 10; --f: 1; --g: 0.9375; }
 /* Bonus: barre pleine largeur entre la grille et les pièces. Sur les écrans plus
    allongés que la maquette, elle se cale au milieu de l'espace libre (--f) et grandit un peu. */
 /* Hauteur prise aux cartes de pièces, qui avaient de la marge */
-.tb-bonus       { --x: 40;  --y: 1112; --w: 944; --h: 120;  --e: 7;  --f: 0.6;  --g: 0.9375; }
+.tb-bonus       { --x: 40;  --y: 1112; --w: 944; --h: 126;  --e: 7;  --f: 0.6;  --g: 0.9375; }
 
 /* ---------- Logo + nuage ---------- */
 .tb-blob { pointer-events: none; overflow: visible; }
@@ -1465,24 +1465,27 @@ body::before {
   box-shadow: 0 calc(2 * var(--u)) 0 #c13f36;
 }
 .tb-bonus-slot-empty .tb-bonus-slot-count { display: none; }
-/* Avancée vers le prochain palier: barre sobre "score / palier" */
+/* Avancée vers le prochain palier: même style que la jauge d'annulation (fond brique, or, texte blanc) */
 .tb-bonus-progress {
   position: relative;
   flex-shrink: 0;
-  height: calc(30 * var(--u));
+  height: calc(36 * var(--u));
   margin: 0 calc(4 * var(--u));
   border-radius: 9999px;
-  background: #ecd6b0;
-  box-shadow: inset 0 calc(2 * var(--u)) calc(3 * var(--u)) rgba(120, 70, 30, 0.18);
+  background: linear-gradient(180deg, #b84e3b, var(--tb-bar));
+  box-shadow: inset 0 calc(3 * var(--u)) calc(4 * var(--u)) rgba(80, 20, 10, 0.3), 0 calc(2 * var(--u)) 0 rgba(255,255,255,0.6);
   overflow: hidden;
 }
 .tb-bonus-progress-fill {
   position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  border-radius: inherit;
-  background: linear-gradient(180deg, #ffd85e, #f5b63a);
+  left: calc(4 * var(--u));
+  top: calc(4 * var(--u));
+  bottom: calc(4 * var(--u));
+  max-width: calc(100% - 8 * var(--u));
+  min-width: calc(28 * var(--u));
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #ffd85e, var(--tb-gold) 60%, #f0a92a);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -2px 0 rgba(0,0,0,0.12);
   transition: width 0.5s ease-out;
 }
 .tb-bonus-progress-text {
@@ -1491,10 +1494,11 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(21 * var(--u));
-  font-weight: 800;
+  font-size: calc(23 * var(--u));
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #5a2d0c;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.35);
   white-space: nowrap;
 }
 /* Appui sur un bonus vide: la barre du prochain palier pulse */
@@ -1507,14 +1511,14 @@ body::before {
 .tb-bonus-next-text { transform-origin: left center; }
 @media (max-aspect-ratio: 1/1) {
   /* Plus haute quand il y a de la place en trop (écrans allongés) */
-  .tb-layout .tb-bonus { height: calc(120 * var(--u) + min(var(--rest) * 0.3, 50 * var(--u))); }
+  .tb-layout .tb-bonus { height: calc(126 * var(--u) + min(var(--rest) * 0.3, 50 * var(--u))); }
 }
 @media (min-aspect-ratio: 1/1) {
   /* Écran large: les 3 bonus en colonne sous la carte de score */
   .tb-bonus { align-items: stretch; gap: calc(10 * var(--u)); padding: calc(14 * var(--u)) calc(16 * var(--u)) calc(12 * var(--u)); }
   .tb-bonus-slots { flex-direction: column; gap: calc(10 * var(--u)); }
-  .tb-bonus-progress { height: calc(28 * var(--u)); margin: 0; }
-  .tb-bonus-progress-text { font-size: calc(19 * var(--u)); }
+  .tb-bonus-progress { height: calc(34 * var(--u)); margin: 0; }
+  .tb-bonus-progress-text { font-size: calc(21 * var(--u)); }
   .tb-layout .tb-bonus-slot { flex: 1; height: auto; justify-content: flex-start; padding: 0 calc(18 * var(--u)) !important; }
   .tb-bonus-slot lucide-angular, .tb-bonus-slot svg { width: calc(32 * var(--u)); height: calc(32 * var(--u)); }
   .tb-bonus-slot-name { font-size: calc(26 * var(--u)); }
