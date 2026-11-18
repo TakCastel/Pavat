@@ -227,8 +227,8 @@ export class AppComponent implements OnInit {
   private portraitQuery = typeof window !== 'undefined' ? window.matchMedia('(max-aspect-ratio: 1/1)') : null;
   protected isPortrait = signal(this.portraitQuery?.matches ?? false);
   /** Taille max d'une case = hauteur de la zone × ratio (voir app-tile-preview). */
-  curCellRatio = computed(() => (this.isPortrait() ? 0.4 : 0.86));
-  nextCellRatio = computed(() => (this.isPortrait() ? 0.55 : 0.86));
+  curCellRatio = computed(() => (this.isPortrait() ? 0.4 : 0.46));
+  nextCellRatio = computed(() => (this.isPortrait() ? 0.55 : 0.45));
 
   /** 4150 → "4 150" */
   fmt(n: number): string {
