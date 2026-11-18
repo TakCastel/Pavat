@@ -197,9 +197,11 @@ export class AppComponent implements OnInit {
     if (this.bonusInventory()[type] > 0) {
       this.gameService.startBonusPick(type);
     } else {
-      this.bonusInfoToast.set(true);
+      // Bonus vide: la ligne "prochain bonus" clignote (relancée à chaque appui)
+      this.bonusInfoToast.set(false);
       clearTimeout(this.bonusInfoTimer);
-      this.bonusInfoTimer = setTimeout(() => this.bonusInfoToast.set(false), 2600);
+      requestAnimationFrame(() => this.bonusInfoToast.set(true));
+      this.bonusInfoTimer = setTimeout(() => this.bonusInfoToast.set(false), 1200);
     }
   }
 
