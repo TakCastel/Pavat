@@ -43,6 +43,9 @@ Ce document decrit toutes les regles et mecanismes observes dans le jeu.
 - Rotation: tourne la tuile de 90 degres.
 - Miroir: renverse horizontalement la tuile (si asymetrique).
 - Echange: permute tuile courante et suivante.
+- Annuler: reprend le dernier coup (charges gagnees en validant des groupes).
+- Bonus "nettoyer une couleur": tous les 10 000 points, on gagne un bonus (3 en reserve au maximum).
+  Il retire de la grille toutes les cases de la couleur choisie (sans rapporter de points).
 
 ## Lignes et colonnes completes
 - Une ligne ou colonne complete doit etre remplie d'une SEULE couleur.
@@ -146,6 +149,9 @@ This document describes all rules and main mechanics of the game.
 - Rotate: rotate the tile by 90 degrees.
 - Mirror: flip the tile horizontally (if asymmetric).
 - Swap: swap current and next tile.
+- Undo: take back the last move (charges earned by validating groups).
+- "Clear a color" bonus: every 10,000 points you earn a bonus (up to 3 in reserve).
+  It removes every cell of the chosen color from the grid (no points awarded).
 
 ## Completed rows and columns
 - A full row/column must be filled with a SINGLE color.

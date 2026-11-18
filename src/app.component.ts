@@ -1,7 +1,8 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, OnInit, Injector, afterNextRender } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { GameService } from './services/game.service';
+import { GameService, TILE_COLORS } from './services/game.service';
+import { Tile } from './models/game.model';
 import { GridComponent } from './components/grid/grid.component';
 import { TilePreviewComponent } from './components/tile-preview/tile-preview.component';
 import { TutorialComponent } from './components/tutorial/tutorial.component';
@@ -12,7 +13,7 @@ import { OptionsService } from './services/options.service';
 import { ColorblindIconService } from './services/colorblind-icon.service';
 import { OptionsMenuComponent } from './components/options-menu/options-menu.component';
 import { LandingPageComponent } from './components/landing-page/landing-page.component';
-import { LucideAngularModule, Volume2, VolumeX, Sun, Moon, Sparkles, ShieldCheck, Undo2, RotateCwSquare, Replace } from 'lucide-angular';
+import { LucideAngularModule, Volume2, VolumeX, Sun, Moon, Sparkles, ShieldCheck, Undo2, RotateCw, ArrowLeftRight } from 'lucide-angular';
 
 import { CookieBannerComponent } from './components/cookie-banner/cookie-banner.component';
 @Component({
@@ -27,6 +28,8 @@ import { CookieBannerComponent } from './components/cookie-banner/cookie-banner.
     '(window:keydown.space)': 'tutorialService.isTutorialActive() || rotateTile()',
     '(window:keydown.f)': 'tutorialService.isTutorialActive() || onSwapKeyPress()',
     '(window:keydown.z)': 'tutorialService.isTutorialActive() || onUndoKeyPress()',
+    '(window:keydown.b)': 'tutorialService.isTutorialActive() || openBonusPicker()',
+    '(window:keydown.escape)': 'closeBonusPicker()',
   },
 })
 export class AppComponent implements OnInit {
@@ -80,8 +83,8 @@ export class AppComponent implements OnInit {
   readonly SparklesIcon = Sparkles;
   readonly ShieldCheckIcon = ShieldCheck;
   readonly Undo2Icon = Undo2;
-  readonly RotateIcon = RotateCwSquare;
-  readonly SwapIcon = Replace;
+  readonly RotateIcon = RotateCw;
+  readonly SwapIcon = ArrowLeftRight;
   protected readonly Math = Math;
 
   score = this.gameService.score;
@@ -107,6 +110,46 @@ export class AppComponent implements OnInit {
     setTimeout(() => this.undoGainPulse.set(false), 700);
   });
   minValidatedGroupSize = this.gameService.minValidatedGroupSize;
+
+  // ---------- Bonus "nettoyer une couleur" (1 tous les 10 000 pts) ----------
+  bonusCharges = this.gameService.bonusCharges;
+  canUseBonus = this.gameService.canUseBonus;
+  bonusProgress = this.gameService.bonusProgress;
+  nextBonusAt = this.gameService.nextBonusAt;
+  isBonusPickerOpen = signal(false);
+  /** Une pastille 1×1 par couleur, dessinée comme une vraie pièce (palette et formes daltonien comprises). */
+  readonly bonusSwatches: Tile[] = TILE_COLORS.map((color, i) => ({
+    id: -1 - i, shape: [[1]], color, width: 1, height: 1, barycenter: { r: 0, c: 0 },
+  }));
+  /** Nombre de cases par couleur, recalculé à l'ouverture du sélecteur */
+  bonusColorCounts = computed(() => (this.isBonusPickerOpen() ? this.gameService.colorCounts() : {} as Record<string, number>));
+  protected bonusGainPulse = signal(false);
+  protected bonusToast = signal(false);
+  private bonusToastTimer: any = null;
+  private bonusGainEffect = effect(() => {
+    if (!this.gameService.bonusGain()) return;
+    this.bonusGainPulse.set(false);
+    requestAnimationFrame(() => this.bonusGainPulse.set(true));
+    setTimeout(() => this.bonusGainPulse.set(false), 900);
+    this.bonusToast.set(true);
+    clearTimeout(this.bonusToastTimer);
+    this.bonusToastTimer = setTimeout(() => this.bonusToast.set(false), 2600);
+  });
+
+  openBonusPicker(): void {
+    if (this.tutorialService.isTutorialActive()) return;
+    this.isBonusPickerOpen.set(true);
+  }
+
+  closeBonusPicker(): void {
+    this.isBonusPickerOpen.set(false);
+  }
+
+  useBonus(color: string): void {
+    if (this.gameService.useColorClearBonus(color)) {
+      this.isBonusPickerOpen.set(false);
+    }
+  }
   isSoundEnabled = this.soundService.isSoundEnabled;
   colorPalette = this.optionsService.colorPalette;
 

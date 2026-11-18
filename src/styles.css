@@ -331,6 +331,7 @@ body::before {
 .tb-btn-coral { background: linear-gradient(180deg, #fc6f52 0%, #f85e4e 55%, #ec5048 100%); color: #fff6e2; --edge: var(--tb-coral-edge); text-shadow: 0 2px 0 rgba(120,20,20,0.25); }
 .tb-btn-cream { background: linear-gradient(180deg, var(--tb-cream), var(--tb-cream-2)); color: var(--tb-ink); --edge: var(--tb-cream-edge); }
 .tb-btn-plum  { background: linear-gradient(180deg, #773946, var(--tb-plum) 40%); color: #fdf3e1; --edge: var(--tb-plum-edge); }
+.tb-btn-gold  { background: linear-gradient(180deg, #ffd96a 0%, var(--tb-gold) 55%, #f0a92a 100%); color: #5a2d0c; --edge: #c8862a; }
 .tb-btn-green { background: linear-gradient(180deg, #4fd08a, #2fb36c); color: #fff; --edge: #1f7f4b; text-shadow: 0 2px 0 rgba(0,0,0,0.15); }
 
 /* Pastille de compteur (Annuler 0/3) */
@@ -680,12 +681,14 @@ body::before {
 .tb-gear        { --x: 913; --y: 56;  --w: 80;  --h: 72;  --e: 8;  --f: 0; }
 .tb-scorecard   { --x: 80;  --y: 218; --w: 864; --h: 107; --e: 8;  --f: 0.12; }
 .tb-board-box   { --x: 111; --y: 357; --w: 800; --h: 750; --f: 0.3; --gw: 1; --gh: 0.9375; --gx: 0.5; }
-.tb-piece-cur   { --x: 40;  --y: 1180; --w: 600; --h: 320; --e: 8; --f: 1; --g: 0.9375; }
-.tb-piece-next  { --x: 664; --y: 1180; --w: 320; --h: 190; --e: 8; --f: 1; --g: 0.9375; }
+.tb-piece-cur   { --x: 40;  --y: 1180; --w: 560; --h: 320; --e: 8; --f: 1; --g: 0.9375; }
+.tb-piece-next  { --x: 620; --y: 1180; --w: 364; --h: 168; --e: 8; --f: 1; --g: 0.9375; }
 /* Rotate n'agit que sur la pièce courante: on le pose dans sa carte, à droite */
-.tb-rotate      { --x: 520; --y: 1293; --w: 96;  --h: 94;  --e: 10; --f: 1; --g: 0.9375; }
-.tb-swap        { --x: 664; --y: 1396; --w: 152; --h: 94;  --e: 10; --f: 1; --g: 0.9375; }
-.tb-undo        { --x: 832; --y: 1396; --w: 152; --h: 94;  --e: 10; --f: 1; --g: 0.9375; }
+.tb-rotate      { --x: 470; --y: 1330; --w: 114; --h: 136; --e: 10; --f: 1; --g: 0.9375; }
+/* Sous la suivante: Échanger, Annuler, Bonus (icône + libellé) */
+.tb-swap        { --x: 620; --y: 1364; --w: 114; --h: 126; --e: 10; --f: 1; --g: 0.9375; }
+.tb-undo        { --x: 745; --y: 1364; --w: 114; --h: 126; --e: 10; --f: 1; --g: 0.9375; }
+.tb-bonus       { --x: 870; --y: 1364; --w: 114; --h: 126; --e: 10; --f: 1; --g: 0.9375; }
 
 /* ---------- Logo + nuage ---------- */
 .tb-blob { pointer-events: none; overflow: visible; }
@@ -769,19 +772,37 @@ body::before {
   font-size: calc(34 * var(--u));
 }
 
-/* Mobile (portrait): boutons icône seuls, pastille du compteur sur Annuler */
+/* Libellé court sous l'icône: seulement en portrait (en paysage, le texte complet est à côté) */
+.tb-btn-cap { display: none; }
+
+/* Mobile (portrait): icône + libellé court dessous, pastille du compteur sur Annuler / Bonus */
 @media (max-aspect-ratio: 1/1) {
   .tb-btn-text { display: none; }
   /* Laisse la place au bouton rotate à droite de la carte */
-  .tb-piece-cur .tb-piece-slot { right: calc(136 * var(--u)); }
-  .tb-rotate, .tb-swap, .tb-undo {
+  .tb-piece-cur .tb-piece-slot { right: calc(150 * var(--u)); }
+  .tb-rotate, .tb-swap, .tb-undo, .tb-bonus {
     --r: 30;
+    flex-direction: column;
     justify-content: center;
-    gap: 0;
+    gap: calc(6 * var(--u));
     padding: 0 !important;
   }
+  .tb-btn-cap {
+    display: block;
+    max-width: 100%;
+    padding: 0 calc(4 * var(--u));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: calc(25 * var(--u));
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: 0.01em;
+  }
   .tb-rotate svg, .tb-swap svg, .tb-rotate lucide-angular, .tb-swap lucide-angular,
-  .tb-undo svg, .tb-undo lucide-angular { width: calc(54 * var(--u)); height: calc(54 * var(--u)); }
+  .tb-undo svg, .tb-undo lucide-angular,
+  .tb-bonus svg, .tb-bonus lucide-angular { width: calc(50 * var(--u)); height: calc(50 * var(--u)); stroke-width: 3; }
+  .tb-layout .tb-bonus .tb-pill,
   .tb-layout .tb-undo .tb-pill {
     position: absolute;
     top: calc(-18 * var(--u));
@@ -970,6 +991,13 @@ body::before {
   .tb-undo { --r: 36; gap: calc(14 * var(--u)); padding-left: calc(30 * var(--u)) !important; padding-right: calc(22 * var(--u)) !important; font-size: calc(32 * var(--u)); }
   .tb-undo svg, .tb-undo lucide-angular { flex-shrink: 0; width: calc(36 * var(--u)); height: calc(36 * var(--u)); }
   .tb-undo .tb-pill { height: calc(40 * var(--u)); min-width: calc(88 * var(--u)); font-size: calc(30 * var(--u)); }
+  /* Bonus: sous la carte de score, même style que Annuler */
+  .tb-bonus { --x: 146; --y: 640; --w: 325; --h: 90; --e: 10; }
+  .tb-bonus { --r: 40; justify-content: flex-start; gap: calc(16 * var(--u)); padding: 0 calc(22 * var(--u)) 0 calc(30 * var(--u)) !important; font-size: calc(37 * var(--u)); }
+  .tb-bonus svg, .tb-bonus lucide-angular { flex-shrink: 0; width: calc(44 * var(--u)); height: calc(44 * var(--u)); }
+  .tb-bonus .tb-btn-text { flex: 1; min-width: 0; text-align: center; white-space: nowrap; }
+  .tb-bonus .tb-kbd { flex-shrink: 0; }
+  .tb-bonus .tb-pill { flex-shrink: 0; height: calc(40 * var(--u)); min-width: calc(48 * var(--u)); justify-content: center; font-size: calc(28 * var(--u)); padding: 0 calc(10 * var(--u)); }
 
   /* Plateau */
   .tb-board-box { border-radius: calc(52 * var(--u)); padding: calc(9 * var(--u)) calc(11 * var(--u)) calc(9 * var(--u)) calc(12 * var(--u)); }
@@ -1299,4 +1327,102 @@ body::before {
   pointer-events: none;
   opacity: 0;
   z-index: 40;
+}
+
+/* ---------- Bonus "nettoyer une couleur" ---------- */
+.tb-bonus { font-weight: 700; overflow: visible; }
+.tb-bonus .tb-pill { background: #fff3cf; color: #5a2d0c; }
+/* Pas encore de bonus: bouton crème, l'icône reste dorée */
+.tb-bonus:not(.tb-bonus-ready) {
+  background: linear-gradient(180deg, var(--tb-cream), var(--tb-cream-2));
+  color: var(--tb-ink);
+  --edge: var(--tb-cream-edge);
+}
+.tb-bonus:not(.tb-bonus-ready) lucide-angular { color: #e0a020; }
+/* Barre d'avancée vers le prochain bonus, en bas du bouton */
+.tb-bonus-bar {
+  position: absolute;
+  left: calc(16 * var(--u));
+  right: calc(16 * var(--u));
+  bottom: calc(9 * var(--u));
+  height: calc(7 * var(--u));
+  border-radius: 9999px;
+  background: rgba(120, 70, 30, 0.18);
+  overflow: hidden;
+  pointer-events: none;
+}
+.tb-bonus-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffcf4a, #f39a1e);
+  transition: width 0.4s ease-out;
+}
+.tb-bonus-ready .tb-bonus-bar { background: rgba(120, 60, 10, 0.22); }
+.tb-bonus-ready .tb-bonus-bar > span { background: #fff3cf; }
+@media (min-aspect-ratio: 1/1) {
+  .tb-bonus-bar { left: calc(30 * var(--u)); right: calc(30 * var(--u)); bottom: calc(8 * var(--u)); height: calc(6 * var(--u)); }
+  .tb-layout .tb-bonus .tb-pill { position: static; margin: 0; }
+}
+.tb-bonus-ready lucide-angular { animation: tb-bonus-twinkle 2.4s ease-in-out infinite; }
+@keyframes tb-bonus-twinkle {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.12) rotate(8deg); }
+}
+@keyframes tb-bonus-gain {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.2) rotate(-5deg); }
+  60% { transform: scale(0.95) rotate(3deg); }
+  100% { transform: scale(1); }
+}
+.tb-bonus-gain { animation: tb-bonus-gain 0.8s ease-out; }
+.tb-bonus-toast {
+  position: fixed;
+  left: 50%;
+  top: calc(env(safe-area-inset-top, 0px) + 18%);
+  z-index: 70;
+  padding: 0.7rem 1.2rem;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #ffd96a, var(--tb-gold));
+  color: #5a2d0c;
+  font-weight: 800;
+  font-size: 1.05rem;
+  white-space: nowrap;
+  box-shadow: 0 5px 0 #c8862a, 0 12px 24px rgba(60, 30, 20, 0.3);
+  pointer-events: none;
+  animation: tb-bonus-toast 2.6s ease-out both;
+}
+@keyframes tb-bonus-toast {
+  0% { opacity: 0; transform: translate(-50%, 20px) scale(0.8); }
+  12% { opacity: 1; transform: translate(-50%, 0) scale(1.05); }
+  20% { transform: translate(-50%, 0) scale(1); }
+  85% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -16px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tb-bonus-ready lucide-angular, .tb-bonus-gain { animation: none; }
+}
+/* Sélecteur de couleur */
+.tb-bonus-colors { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.45rem; margin: 0.4rem 0; }
+.tb-bonus-color {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0.45rem 0.35rem;
+  border-radius: 1rem;
+  background: #f6e2bf;
+  box-shadow: 0 4px 0 var(--tb-cream-edge);
+  transition: transform 0.1s ease-out, opacity 0.2s;
+  cursor: pointer;
+}
+.tb-bonus-color:hover:not(:disabled) { transform: translateY(-2px); }
+.tb-bonus-color:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--tb-cream-edge); }
+.tb-bonus-color:disabled { opacity: 0.35; cursor: not-allowed; }
+.tb-bonus-color:focus-visible { outline: 3px solid var(--tb-teal-edge, #129a90); outline-offset: 2px; }
+.tb-bonus-swatch { display: block; width: 34px; height: 34px; }
+.tb-bonus-count { font-weight: 700; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+.tb-bonus-progress { height: 1.9rem; }
+@media (max-aspect-ratio: 1/1) {
+  .tb-layout .tb-bonus .tb-pill { background: var(--tb-coral, #f85e4e); color: #fff6e2; box-shadow: 0 calc(3 * var(--u)) 0 #c13f36; }
 }

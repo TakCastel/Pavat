@@ -80,6 +80,10 @@ const UNDO_COST_GROWTH = 1.5;
 const STARTING_UNDO_CHARGES = 1;
 /** Points rapportés par une case validée (×multiplicateur de taille de grille) */
 const VALIDATED_CELL_POINTS = 15;
+/** Un bonus "nettoyer une couleur" est gagné à chaque palier de score */
+export const BONUS_POINTS_STEP = 10000;
+const MAX_BONUS_CHARGES = 3;
+export const TILE_COLORS = COLORS;
 
 interface UndoSnapshot {
   grid: Cell[][];
@@ -91,7 +95,12 @@ interface UndoSnapshot {
   undoCharges: number;
   undoProgressPoints: number;
   undoUnlocked: number;
+  bonusCharges: number;
+  bonusEarned: number;
 }
+
+/** Un bonus vient d'être gagné (pour animer le bouton et afficher un message) */
+export interface BonusGainEvent { id: number; count: number; }
 
 @Injectable({
   providedIn: 'root',
@@ -126,6 +135,23 @@ export class GameService {
     !this.state().isGameOver
   );
   public readonly previewLinePoints = this._previewLinePoints.asReadonly();
+  public readonly bonusCharges = computed(() => this.state().bonusCharges ?? 0);
+  /** Score à atteindre pour le prochain bonus */
+  public readonly nextBonusAt = computed(() => ((this.state().bonusEarned ?? 0) + 1) * BONUS_POINTS_STEP);
+  /** Progression (0 → 1) vers le prochain bonus */
+  public readonly bonusProgress = computed(() => {
+    const prev = (this.state().bonusEarned ?? 0) * BONUS_POINTS_STEP;
+    return Math.max(0, Math.min(1, (this.state().score - prev) / BONUS_POINTS_STEP));
+  });
+  public readonly canUseBonus = computed(() =>
+    (this.state().bonusCharges ?? 0) > 0 &&
+    !this._isPlacementAnimating() &&
+    !this.state().isShrinking &&
+    !this.state().isGameOver &&
+    this.state().grid.some(row => row.some(cell => cell.color !== null && !cell.blocked))
+  );
+  private _bonusGain = signal<BonusGainEvent | null>(null);
+  public readonly bonusGain = this._bonusGain.asReadonly();
   public readonly shrinkPoints = computed(() => {
     const validatedCount = this.grid().reduce(
       (count, row) => count + row.filter(cell => cell.validated).length,
@@ -204,6 +230,8 @@ export class GameService {
       undoCharges: STARTING_UNDO_CHARGES,
       undoProgressPoints: 0,
       undoUnlocked: 0,
+      bonusCharges: 0,
+      bonusEarned: 0,
     };
   }
 
@@ -239,6 +267,8 @@ export class GameService {
       undoCharges: state.undoCharges ?? 0,
       undoProgressPoints: state.undoProgressPoints ?? 0,
       undoUnlocked: state.undoUnlocked ?? 0,
+      bonusCharges: state.bonusCharges ?? 0,
+      bonusEarned: state.bonusEarned ?? 0,
     });
     if (this._undoStack.length > 30) {
       this._undoStack.shift();
@@ -323,6 +353,9 @@ export class GameService {
       undoProgressPoints: 0,
       // Si le coup annulé avait débloqué une annulation, elle est reprise: le coût redescend aussi
       undoUnlocked: snapshot.undoUnlocked,
+      // Un bonus gagné par le coup annulé est repris; un bonus utilisé puis annulé est rendu
+      bonusCharges: snapshot.bonusCharges,
+      bonusEarned: snapshot.bonusEarned,
       lastPlacedTileId: null,
       isShrinking: false,
       isShrinkImminent: false,
@@ -353,6 +386,8 @@ export class GameService {
         undoCharges: state.undoCharges,
         undoProgressPoints: state.undoProgressPoints,
         undoUnlocked: state.undoUnlocked,
+        bonusCharges: state.bonusCharges,
+        bonusEarned: state.bonusEarned,
       };
       localStorage.setItem(STORAGE_KEY_GAME_STATE, JSON.stringify(stateToSave));
     } catch (error) {
@@ -388,6 +423,8 @@ export class GameService {
         undoCharges: savedState.undoCharges ?? STARTING_UNDO_CHARGES,
         undoProgressPoints: savedState.undoProgressPoints ?? 0,
         undoUnlocked: savedState.undoUnlocked ?? 0,
+        bonusCharges: savedState.bonusCharges ?? 0,
+        bonusEarned: savedState.bonusEarned ?? Math.floor((savedState.score || 0) / BONUS_POINTS_STEP),
       };
 
       // Restaurer le compteur de tileId
@@ -546,8 +583,14 @@ export class GameService {
       const next = this._upcomingTiles.shift() ?? this._generateRandomTile();
 
       this._gameState.update(s => ({...s, currentTile: current, nextTile: next }));
-      
-      // Vérifier si au moins une des deux tuiles peut être placée
+      this.checkPlayableOrShrink();
+  }
+
+  /** Si aucune des deux tuiles ne rentre, la grille va rétrécir (après un court avertissement). */
+  private checkPlayableOrShrink(): void {
+      clearTimeout(this.shrinkTimeout);
+      const current = this.state().currentTile;
+      const next = this.state().nextTile;
       if (!this.canPlaceAtLeastOneTile(current, next)) {
           this._gameState.update(s => ({...s, isShrinkImminent: true}));
           this.saveGameState();
@@ -568,6 +611,74 @@ export class GameService {
       } else {
           this.saveGameState();
       }
+  }
+
+  /** Donne un bonus pour chaque palier de score franchi (3 en réserve au maximum). */
+  private grantBonusForScore(): void {
+    const s = this.state();
+    const reached = Math.floor(s.score / BONUS_POINTS_STEP);
+    const earned = s.bonusEarned ?? 0;
+    if (reached <= earned) return;
+    const charges = s.bonusCharges ?? 0;
+    const newCharges = Math.min(MAX_BONUS_CHARGES, charges + (reached - earned));
+    this._gameState.update(st => ({ ...st, bonusEarned: reached, bonusCharges: newCharges }));
+    if (newCharges > charges) {
+      this._bonusGain.set({ id: ++this._animSeq, count: newCharges - charges });
+    }
+  }
+
+  /** Nombre de cases de chaque couleur actuellement sur la grille. */
+  public colorCounts(): Record<string, number> {
+    const counts: Record<string, number> = Object.fromEntries(COLORS.map(c => [c, 0]));
+    for (const row of this.grid()) {
+      for (const cell of row) {
+        if (cell.color && !cell.blocked && counts[cell.color] !== undefined) counts[cell.color]++;
+      }
+    }
+    return counts;
+  }
+
+  /**
+   * Bonus: retire de la grille toutes les cases de la couleur choisie.
+   * Ne rapporte pas de points, mais libère de la place (et peut éviter un rétrécissement).
+   */
+  public useColorClearBonus(color: string): boolean {
+    if (!this.canUseBonus()) return false;
+    const grid = this.grid();
+    const cellsToClear = new Set<string>();
+    grid.forEach((row, r) => row.forEach((cell, c) => {
+      if (cell.color === color && !cell.blocked) cellsToClear.add(`${r},${c}`);
+    }));
+    if (cellsToClear.size === 0) return false;
+
+    // Le rétrécissement annoncé est suspendu: on revérifie une fois la place libérée
+    clearTimeout(this.shrinkTimeout);
+    this.pushUndoSnapshot();
+    this._isPlacementAnimating.set(true);
+    const gridWithClearing = grid.map((row, r) =>
+      row.map((cell, c) => cellsToClear.has(`${r},${c}`) ? { ...cell, clearing: true } : cell)
+    );
+    this._gameState.update(s => ({
+      ...s,
+      grid: gridWithClearing,
+      bonusCharges: Math.max(0, (s.bonusCharges ?? 0) - 1),
+      isShrinkImminent: false,
+    }));
+    this.saveGameState();
+    this.soundService.playClearSound(Math.max(1, Math.ceil(cellsToClear.size / 4)));
+
+    setTimeout(() => {
+      const cleared = this.grid().map((row, r) =>
+        row.map((cell, c) => cellsToClear.has(`${r},${c}`)
+          ? { color: null, tileId: null, blocked: cell.blocked }
+          : { ...cell, clearing: false })
+      );
+      const { grid: validatedGrid } = this._updateValidatedGroups(cleared);
+      this._gameState.update(s => ({ ...s, grid: validatedGrid }));
+      this._isPlacementAnimating.set(false);
+      this.checkPlayableOrShrink();
+    }, ANIMATION_DURATION);
+    return true;
   }
 
   public rotateCurrentTile(): void {
@@ -820,6 +931,7 @@ export class GameService {
       score: newScore,
     }));
     this.updateBestScore(newScore);
+    this.grantBonusForScore();
     this.saveGameState();
     this.emitScoreGain(clearInfo.points, clearInfo.cellsToClear);
 
@@ -867,6 +979,7 @@ export class GameService {
           score: newScore
         }));
         this.updateBestScore(newScore);
+        this.grantBonusForScore();
         this.saveGameState();
         this.emitScoreGain(clearInfo.points, clearInfo.cellsToClear);
         
@@ -1144,6 +1257,7 @@ export class GameService {
             const newScore = currentState.score + points;
             this._gameState.update(state => ({ ...state, grid: gridWithClearing, score: newScore }));
             this.updateBestScore(newScore);
+            this.grantBonusForScore();
             this.saveGameState();
             this.emitScoreGain(points, validatedCellsToClear);
 
