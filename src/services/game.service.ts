@@ -98,6 +98,13 @@ interface UndoSnapshot {
   bonusEarned: number;
 }
 
+/** Bonus de nettoyage: cases qui explosent, en cascade depuis la case touchée (`delay` en ms) */
+export interface ColorBurstEvent { id: number; size: number; color: string; cells: { r: number; c: number; delay: number }[]; }
+/** Décalage de la cascade d'explosions par case de distance */
+const COLOR_BURST_STAGGER = 55;
+/** Durée d'explosion d'une case, après son délai */
+const COLOR_BURST_CELL_DURATION = 460;
+
 /** Un bonus vient d'être gagné (pour animer le bouton et afficher un message) */
 export interface BonusGainEvent { id: number; count: number; }
 
@@ -160,6 +167,10 @@ export class GameService {
     if (!color) return 0;
     return this.grid().reduce((n, row) => n + row.filter(c => c.color === color && !c.blocked).length, 0);
   });
+  /** Case touchée en mode visée: point de départ de la cascade d'explosions */
+  private _bonusPickOrigin: { r: number; c: number } | null = null;
+  private _colorBurst = signal<ColorBurstEvent | null>(null);
+  public readonly colorBurst = this._colorBurst.asReadonly();
   private _bonusGain = signal<BonusGainEvent | null>(null);
   public readonly bonusGain = this._bonusGain.asReadonly();
   public readonly shrinkPoints = computed(() => {
@@ -653,6 +664,7 @@ export class GameService {
   public cancelBonusPick(): void {
     this._bonusPickMode.set(false);
     this._bonusPickColor.set(null);
+    this._bonusPickOrigin = null;
   }
 
   /** Vise la couleur d'une case touchée (une case vide ne change rien). */
@@ -661,13 +673,14 @@ export class GameService {
     const cell = this.grid()[row]?.[col];
     if (!cell?.color || cell.blocked) return;
     this._bonusPickColor.set(cell.color);
+    this._bonusPickOrigin = { r: row, c: col };
     this.soundService.playRotateSound();
   }
 
   public confirmBonusPick(): boolean {
     const color = this._bonusPickColor();
     if (!color) return false;
-    const ok = this.useColorClearBonus(color);
+    const ok = this.useColorClearBonus(color, this._bonusPickOrigin);
     this.cancelBonusPick();
     return ok;
   }
@@ -687,43 +700,51 @@ export class GameService {
    * Bonus: retire de la grille toutes les cases de la couleur choisie.
    * Ne rapporte pas de points, mais libère de la place (et peut éviter un rétrécissement).
    */
-  public useColorClearBonus(color: string): boolean {
+  public useColorClearBonus(color: string, origin: { r: number; c: number } | null = null): boolean {
     if (!this.canUseBonus()) return false;
     const grid = this.grid();
-    const cellsToClear = new Set<string>();
+    const cells: { r: number; c: number }[] = [];
     grid.forEach((row, r) => row.forEach((cell, c) => {
-      if (cell.color === color && !cell.blocked) cellsToClear.add(`${r},${c}`);
+      if (cell.color === color && !cell.blocked) cells.push({ r, c });
     }));
-    if (cellsToClear.size === 0) return false;
+    if (cells.length === 0) return false;
+
+    // Cascade: les cases explosent de proche en proche à partir de la case touchée
+    // (sans case touchée, depuis le centre de la grille)
+    const size = grid.length;
+    const from = origin ?? { r: (size - 1) / 2, c: (size - 1) / 2 };
+    const burstCells = cells.map(({ r, c }) => ({
+      r, c, delay: Math.round(Math.hypot(r - from.r, c - from.c) * COLOR_BURST_STAGGER),
+    }));
+    const duration = Math.max(...burstCells.map(b => b.delay)) + COLOR_BURST_CELL_DURATION;
 
     this.cancelBonusPick();
     // Le rétrécissement annoncé est suspendu: on revérifie une fois la place libérée
     clearTimeout(this.shrinkTimeout);
     this.pushUndoSnapshot();
     this._isPlacementAnimating.set(true);
-    const gridWithClearing = grid.map((row, r) =>
-      row.map((cell, c) => cellsToClear.has(`${r},${c}`) ? { ...cell, clearing: true } : cell)
-    );
     this._gameState.update(s => ({
       ...s,
-      grid: gridWithClearing,
       bonusCharges: Math.max(0, (s.bonusCharges ?? 0) - 1),
       isShrinkImminent: false,
     }));
     this.saveGameState();
-    this.soundService.playClearSound(Math.max(1, Math.ceil(cellsToClear.size / 4)));
+    this._colorBurst.set({ id: ++this._animSeq, size, color, cells: burstCells });
 
+    // Les cases ne quittent la grille qu'une fois toutes explosées
+    const toClear = new Set(cells.map(({ r, c }) => `${r},${c}`));
     setTimeout(() => {
       const cleared = this.grid().map((row, r) =>
-        row.map((cell, c) => cellsToClear.has(`${r},${c}`)
+        row.map((cell, c) => toClear.has(`${r},${c}`)
           ? { color: null, tileId: null, blocked: cell.blocked }
-          : { ...cell, clearing: false })
+          : { ...cell })
       );
       const { grid: validatedGrid } = this._updateValidatedGroups(cleared);
       this._gameState.update(s => ({ ...s, grid: validatedGrid }));
+      this.saveGameState();
       this._isPlacementAnimating.set(false);
       this.checkPlayableOrShrink();
-    }, ANIMATION_DURATION);
+    }, duration);
     return true;
   }
 

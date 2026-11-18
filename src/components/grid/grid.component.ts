@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, ChangeDetectorRef, ElementRef, Injector, afterNextRender, untracked, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { GameService, GridResizeEvent, ScoreGainEvent, ShrinkBurstEvent, UndoEvent } from '../../services/game.service';
+import { ColorBurstEvent, GameService, GridResizeEvent, ScoreGainEvent, ShrinkBurstEvent, UndoEvent } from '../../services/game.service';
 import { Tile, Cell } from '../../models/game.model';
 import { GridIndicatorComponent } from '../grid-indicator/grid-indicator.component';
 import { I18nService } from '../../services/i18n.service';
@@ -35,6 +35,7 @@ export class GridComponent {
   private fxLayerRef = viewChild<ElementRef<HTMLElement>>('fxLayer');
   /** Animations "cases soufflées" à annuler quand la grille change vraiment de taille */
   private burstAnimations: Animation[] = [];
+  private colorBurstAnimations: Animation[] = [];
   protected shrinkBurst = this.gameService.shrinkBurst;
 
   grid = this.gameService.grid;
@@ -78,6 +79,24 @@ export class GridComponent {
     effect(() => {
       const burst = this.gameService.shrinkBurst();
       if (burst) untracked(() => this.playShrinkBurst(burst));
+    });
+
+    effect(() => {
+      const burst = this.gameService.colorBurst();
+      if (burst) untracked(() => this.playColorBurst(burst));
+    });
+
+    // Les cases soufflées par le bonus restent invisibles (fill: forwards) jusqu'à ce que
+    // la grille les vide: on rend alors leur aspect normal aux cases (réutilisées par le rendu)
+    effect(() => {
+      this.grid();
+      untracked(() => {
+        if (!this.colorBurstAnimations.length) return;
+        afterNextRender(() => {
+          this.colorBurstAnimations.forEach(a => a.cancel());
+          this.colorBurstAnimations = [];
+        }, { injector: this.injector });
+      });
     });
 
     effect(() => {
@@ -658,6 +677,101 @@ export class GridComponent {
         ];
     const anim = el.animate(keyframes, { duration: 1100, easing: 'ease-out', fill: 'forwards' });
     anim.onfinish = anim.oncancel = () => el.remove();
+  }
+
+  /**
+   * Bonus "nettoyer une couleur": chaque case de la couleur gonfle, flashe puis éclate
+   * en morceaux, en cascade depuis la case touchée; la grille tremble à la fin.
+   */
+  private playColorBurst(burst: ColorBurstEvent): void {
+    const board = this.boardRef()?.nativeElement;
+    const layer = this.fxLayerRef()?.nativeElement;
+    const pops = new Map<number, ShrinkPop>();
+    for (const { delay } of burst.cells) {
+      const pop = pops.get(delay) ?? { delayMs: delay, count: 0, filled: true };
+      pop.count++;
+      pops.set(delay, pop);
+    }
+    this.soundService.playShrinkSound([...pops.values()]);
+    if (!board || !layer || this.prefersReducedMotion()) return;
+    const cells = this.boardCells(board);
+    if (cells.length !== burst.size * burst.size) return;
+
+    const layerRect = layer.getBoundingClientRect();
+    const maxDelay = Math.max(...burst.cells.map(b => b.delay));
+
+    for (const { r, c, delay } of burst.cells) {
+      const cell = cells[r * burst.size + c];
+      if (!cell) continue;
+      const rect = cell.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      const color = getComputedStyle(cell).backgroundColor;
+      const spin = (Math.random() - 0.5) * 60;
+
+      // La case se gonfle, s'illumine puis disparaît
+      this.colorBurstAnimations.push(
+        cell.animate(
+          [
+            { transform: 'scale(1)', opacity: 1, filter: 'brightness(1)' },
+            { transform: 'scale(1.22)', opacity: 1, filter: 'brightness(1.9)', offset: 0.35 },
+            { transform: `scale(0.2) rotate(${spin}deg)`, opacity: 0, filter: 'brightness(2.2)' },
+          ],
+          { duration: 300, delay, easing: 'cubic-bezier(.3,.7,.4,1)', fill: 'forwards' }
+        )
+      );
+
+      // Onde de choc blanche
+      const ring = document.createElement('div');
+      const ringSize = rect.width * 0.9;
+      ring.style.cssText = `position:absolute;left:${x - layerRect.left - ringSize / 2}px;top:${y - layerRect.top - ringSize / 2}px;width:${ringSize}px;height:${ringSize}px;border-radius:50%;border:${Math.max(2, rect.width * 0.08)}px solid rgba(255,255,255,.9);opacity:0;will-change:transform,opacity;`;
+      layer.appendChild(ring);
+      ring.animate(
+        [
+          { transform: 'scale(0.3)', opacity: 0.95 },
+          { transform: 'scale(1.7)', opacity: 0 },
+        ],
+        { duration: 380, delay: delay + 90, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' }
+      ).finished.finally(() => ring.remove());
+
+      // Éclats de la couleur, projetés tout autour avec un peu de gravité
+      const pieces = 9;
+      for (let p = 0; p < pieces; p++) {
+        const shard = document.createElement('div');
+        const size = rect.width * (0.12 + Math.random() * 0.18);
+        shard.style.cssText = `position:absolute;left:${x - layerRect.left - size / 2}px;top:${y - layerRect.top - size / 2}px;width:${size}px;height:${size}px;border-radius:${Math.random() < 0.5 ? '50%' : '22%'};background:${color};box-shadow:inset 0 -2px 0 rgba(0,0,0,.2),0 1px 2px rgba(0,0,0,.3);opacity:0;will-change:transform,opacity;`;
+        layer.appendChild(shard);
+        const angle = (p / pieces) * Math.PI * 2 + (Math.random() - 0.5) * 0.7;
+        const dist = rect.width * (0.7 + Math.random() * 1.1);
+        const tx = Math.cos(angle) * dist;
+        const ty = Math.sin(angle) * dist;
+        const fall = rect.height * (0.4 + Math.random() * 0.6);
+        const rot = (Math.random() - 0.5) * 600;
+        shard
+          .animate(
+            [
+              { transform: 'translate(0, 0) rotate(0deg) scale(1)', opacity: 1 },
+              { transform: `translate(${tx * 0.7}px, ${ty * 0.7}px) rotate(${rot * 0.6}deg) scale(1)`, opacity: 1, offset: 0.5 },
+              { transform: `translate(${tx}px, ${ty + fall}px) rotate(${rot}deg) scale(0.3)`, opacity: 0 },
+            ],
+            { duration: 560 + Math.random() * 180, delay: delay + 100, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' }
+          )
+          .finished.finally(() => shard.remove());
+      }
+    }
+
+    // Secousse de la grille à la fin de la cascade
+    board.animate(
+      [
+        { transform: 'translate(0, 0)' },
+        { transform: 'translate(-6px, 3px)' },
+        { transform: 'translate(5px, -4px)' },
+        { transform: 'translate(-3px, -2px)' },
+        { transform: 'translate(2px, 2px)' },
+        { transform: 'translate(0, 0)' },
+      ],
+      { duration: 380, delay: Math.max(0, maxDelay - 60), easing: 'ease-out' }
+    );
   }
 
   private playShrinkBurst(burst: ShrinkBurstEvent): void {
