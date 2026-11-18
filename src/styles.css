@@ -686,17 +686,17 @@ body::before {
 .tb-gear        { --x: 913; --y: 56;  --w: 80;  --h: 72;  --e: 8;  --f: 0; }
 .tb-scorecard   { --x: 80;  --y: 218; --w: 864; --h: 107; --e: 8;  --f: 0.12; }
 .tb-board-box   { --x: 111; --y: 357; --w: 800; --h: 750; --f: 0.3; --gw: 1; --gh: 0.9375; --gx: 0.5; }
-.tb-piece-cur   { --x: 40;  --y: 1250; --w: 560; --h: 250; --e: 8; --f: 1; --g: 0.9375; }
-.tb-piece-next  { --x: 620; --y: 1250; --w: 364; --h: 124; --e: 8; --f: 1; --g: 0.9375; }
+.tb-piece-cur   { --x: 40;  --y: 1268; --w: 560; --h: 232; --e: 8; --f: 1; --g: 0.9375; }
+.tb-piece-next  { --x: 620; --y: 1268; --w: 364; --h: 114; --e: 8; --f: 1; --g: 0.9375; }
 /* Rotate n'agit que sur la pièce courante: on le pose dans sa carte, à droite */
-.tb-rotate      { --x: 470; --y: 1362; --w: 114; --h: 116; --e: 10; --f: 1; --g: 0.9375; }
+.tb-rotate      { --x: 470; --y: 1370; --w: 114; --h: 110; --e: 10; --f: 1; --g: 0.9375; }
 /* Sous la suivante: Échanger, Annuler, Bonus (icône + libellé) */
-.tb-swap        { --x: 620; --y: 1388; --w: 174; --h: 106; --e: 10; --f: 1; --g: 0.9375; }
-.tb-undo        { --x: 810; --y: 1388; --w: 174; --h: 106; --e: 10; --f: 1; --g: 0.9375; }
+.tb-swap        { --x: 620; --y: 1396; --w: 174; --h: 98; --e: 10; --f: 1; --g: 0.9375; }
+.tb-undo        { --x: 810; --y: 1396; --w: 174; --h: 98; --e: 10; --f: 1; --g: 0.9375; }
 /* Bonus: barre pleine largeur entre la grille et les pièces. Sur les écrans plus
    allongés que la maquette, elle se cale au milieu de l'espace libre (--f) et grandit un peu. */
 /* Hauteur prise aux cartes de pièces, qui avaient de la marge */
-.tb-bonus       { --x: 40;  --y: 1112; --w: 944; --h: 126;  --e: 7;  --f: 0.6;  --g: 0.9375; }
+.tb-bonus       { --x: 40;  --y: 1110; --w: 944; --h: 146;  --e: 7;  --f: 0.6;  --g: 0.9375; }
 
 /* ---------- Logo + nuage ---------- */
 .tb-blob { pointer-events: none; overflow: visible; }
@@ -998,7 +998,7 @@ body::before {
   .tb-undo svg, .tb-undo lucide-angular { flex-shrink: 0; width: calc(36 * var(--u)); height: calc(36 * var(--u)); }
   .tb-undo .tb-pill { height: calc(40 * var(--u)); min-width: calc(88 * var(--u)); font-size: calc(30 * var(--u)); }
   /* Bonus: sous la carte de score, même style que Annuler */
-  .tb-bonus { --x: 146; --y: 632; --w: 325; --h: 200; --e: 8; }
+  .tb-bonus { --x: 146; --y: 630; --w: 325; --h: 206; --e: 8; }
 
   /* Plateau */
   .tb-board-box { border-radius: calc(52 * var(--u)); padding: calc(9 * var(--u)) calc(11 * var(--u)) calc(9 * var(--u)) calc(12 * var(--u)); }
@@ -1367,7 +1367,7 @@ body::before {
 /* Mode bonus: panneau à la place des pièces, la grille reste entièrement visible */
 .tb-bonus-panel {
   /* Couvre la barre de bonus et les cartes de pièces */
-  --x: 40; --y: 1112; --w: 944; --h: 388; --e: 8; --f: 1; --g: 0.9375;
+  --x: 40; --y: 1110; --w: 944; --h: 390; --e: 8; --f: 1; --g: 0.9375;
   z-index: 30;
   display: flex;
   flex-direction: column;
@@ -1425,8 +1425,8 @@ body::before {
 .tb-bonus {
   display: flex;
   flex-direction: column;
-  gap: calc(8 * var(--u));
-  padding: calc(12 * var(--u)) calc(14 * var(--u)) calc(10 * var(--u));
+  gap: calc(20 * var(--u));
+  padding: calc(14 * var(--u)) calc(16 * var(--u)) calc(16 * var(--u));
   border-radius: calc(36 * var(--u));
   z-index: 2;
 }
@@ -1511,11 +1511,11 @@ body::before {
 .tb-bonus-next-text { transform-origin: left center; }
 @media (max-aspect-ratio: 1/1) {
   /* Plus haute quand il y a de la place en trop (écrans allongés) */
-  .tb-layout .tb-bonus { height: calc(126 * var(--u) + min(var(--rest) * 0.3, 50 * var(--u))); }
+  .tb-layout .tb-bonus { height: calc(146 * var(--u) + min(var(--rest) * 0.3, 50 * var(--u))); }
 }
 @media (min-aspect-ratio: 1/1) {
   /* Écran large: les 3 bonus en colonne sous la carte de score */
-  .tb-bonus { align-items: stretch; gap: calc(10 * var(--u)); padding: calc(14 * var(--u)) calc(16 * var(--u)) calc(12 * var(--u)); }
+  .tb-bonus { align-items: stretch; gap: calc(16 * var(--u)); padding: calc(14 * var(--u)) calc(16 * var(--u)) calc(16 * var(--u)); }
   .tb-bonus-slots { flex-direction: column; gap: calc(10 * var(--u)); }
   .tb-bonus-progress { height: calc(34 * var(--u)); margin: 0; }
   .tb-bonus-progress-text { font-size: calc(21 * var(--u)); }
