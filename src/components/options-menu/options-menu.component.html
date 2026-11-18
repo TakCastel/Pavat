@@ -143,6 +143,15 @@
           class="text-sm font-semibold underline opacity-70 hover:opacity-100 self-center">
           {{ i18n.t().legalNotice }}
         </button>
+        <!-- Apps : rouvrir le formulaire de consentement publicitaire de Google (obligatoire en Europe) -->
+        @if (ads.privacyOptionsRequired()) {
+          <button
+            type="button"
+            (click)="ads.showPrivacyOptions()"
+            class="text-sm font-semibold underline opacity-70 hover:opacity-100 self-center">
+            {{ i18n.t().adPrivacy }}
+          </button>
+        }
       </div>
     </div>
   }

@@ -652,7 +652,8 @@ body::before {
    ========================================================= */
 .tb-layout {
   --safe-t: env(safe-area-inset-top, 0px);
-  --safe-b: env(safe-area-inset-bottom, 0px);
+  /* --ad-banner-h : hauteur de la bannière AdMob dans les apps (0 sur le web), voir AdsService */
+  --safe-b: calc(env(safe-area-inset-bottom, 0px) + var(--ad-banner-h, 0px));
   --u: min(100vw / 1024, (100svh - var(--safe-t) - var(--safe-b)) / 1536);
   /* Écran plus allongé que la maquette: la grille grandit d'abord (--grow),
      puis le reste (--rest) est réparti entre les blocs selon --f */
@@ -1117,7 +1118,7 @@ body::before {
     border-radius: 0;
     box-shadow: none;
     padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: calc(env(safe-area-inset-bottom) + var(--ad-banner-h, 0px));
   }
 }
 .tb-tut .tut-head {

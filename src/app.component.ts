@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, OnInit, Injector, afterNextRender } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, untracked, OnInit, Injector, afterNextRender } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { GameService } from './services/game.service';
@@ -16,6 +16,8 @@ import { LandingPageComponent } from './components/landing-page/landing-page.com
 import { LucideAngularModule, Volume2, VolumeX, Sun, Moon, Sparkles, ShieldCheck, Undo2, RotateCw, ArrowLeftRight, Eraser, Paintbrush, Bomb } from 'lucide-angular';
 
 import { CookieBannerComponent } from './components/cookie-banner/cookie-banner.component';
+import { AnalyticsService } from './services/analytics.service';
+import { AdsService } from './services/ads.service';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -41,6 +43,54 @@ export class AppComponent implements OnInit {
   protected colorblindIconService = inject(ColorblindIconService);
   private sanitizer = inject(DomSanitizer);
   private injector = inject(Injector);
+  private analytics = inject(AnalyticsService);
+  private ads = inject(AdsService);
+
+  // ---------- Mesure d'audience (GA4) : événements de jeu ----------
+  private gameStartedAt = Date.now();
+  private bestAtGameStart = this.gameService.bestScore();
+  private trackGameStart = effect(() => {
+    if (this.gameService.gameStarts() === 0) return;
+    untracked(() => {
+      this.gameStartedAt = Date.now();
+      this.bestAtGameStart = this.gameService.bestScore();
+      this.analytics.track('game_start');
+    });
+  });
+  private wasGameOver = this.gameService.isGameOver();
+  private trackGameOver = effect(() => {
+    const over = this.gameService.isGameOver();
+    if (over === this.wasGameOver) return;
+    this.wasGameOver = over;
+    if (!over) return;
+    untracked(() => {
+      const score = this.gameService.score();
+      this.analytics.track('game_over', {
+        score,
+        grid_size: this.gameService.gridSize(),
+        best_score: this.gameService.bestScore(),
+        duration_sec: Math.round((Date.now() - this.gameStartedAt) / 1000),
+      });
+      if (score > this.bestAtGameStart && score > 0) {
+        this.analytics.track('new_best_score', { score });
+      }
+      this.ads.onGameOver();
+    });
+  });
+  private trackGridResize = effect(() => {
+    const ev = this.gameService.gridResize();
+    if (!ev) return;
+    untracked(() => this.analytics.track('grid_resize', {
+      from_size: ev.from, to_size: ev.to, score: this.gameService.score(),
+    }));
+  });
+  private wasTutorialActive = false;
+  private trackTutorial = effect(() => {
+    const active = this.tutorialService.isTutorialActive();
+    if (active === this.wasTutorialActive) return;
+    this.wasTutorialActive = active;
+    untracked(() => this.analytics.track(active ? 'tutorial_begin' : 'tutorial_complete'));
+  });
 
   // État de la landing page
   showLandingPage = signal(true);
@@ -54,6 +104,8 @@ export class AppComponent implements OnInit {
     if (isCapacitorApp) {
       this.showLandingPage.set(false);
       this.gameService.startGame();
+      // Publicités AdMob (consentement, bannière, interstitiels) une fois l'écran affiché
+      afterNextRender(() => void this.ads.init(), { injector: this.injector });
       return;
     }
 
@@ -206,7 +258,9 @@ export class AppComponent implements OnInit {
   }
 
   chooseBonus(type: BonusType): void {
-    this.gameService.chooseBonus(type);
+    if (this.gameService.chooseBonus(type)) {
+      this.analytics.track('bonus_chosen', { bonus_type: type });
+    }
   }
 
   pickPaintColor(color: string): void {
@@ -218,7 +272,10 @@ export class AppComponent implements OnInit {
   }
 
   confirmBonusPick(): void {
-    this.gameService.confirmBonusPick();
+    const type = this.bonusPickMode();
+    if (this.gameService.confirmBonusPick() && type) {
+      this.analytics.track('bonus_used', { bonus_type: type, score: this.score() });
+    }
   }
   isSoundEnabled = this.soundService.isSoundEnabled;
   colorPalette = this.optionsService.colorPalette;
@@ -320,6 +377,8 @@ export class AppComponent implements OnInit {
   restartGame(): void {
     if (this.isGameOver()) {
       this.gameService.startGame();
+      // Pause naturelle entre deux parties : éventuel interstitiel (apps seulement)
+      void this.ads.maybeShowInterstitial();
       return;
     }
     this.isRestartConfirmVisible.set(true);
@@ -438,7 +497,9 @@ export class AppComponent implements OnInit {
   }
 
   undoMove(): void {
+    if (!this.canUndo()) return;
     this.gameService.undo();
+    this.analytics.track('undo_used', { score: this.score() });
   }
 
   onUndoKeyPress(): void {
@@ -676,6 +737,7 @@ export class AppComponent implements OnInit {
 
   async shareScore(): Promise<void> {
     const score = this.score();
+    this.analytics.track('share', { method: navigator.share ? 'native' : 'clipboard', content_type: 'score', score });
     const gameUrl = 'https://pavat-game.web.app/';
     const locale = this.i18n.getLanguage() === 'fr' ? 'fr-FR' : this.i18n.getLanguage() === 'en' ? 'en-US' : 'en-US';
     const shareText = this.i18n.translateWithParams('shareScoreText', score.toLocaleString(locale));

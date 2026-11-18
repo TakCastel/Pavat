@@ -51,7 +51,7 @@ import { ConsentService } from '../../services/consent.service';
 
             <h3>Cookies et mesure d'audience</h3>
             <p>
-              Pavat n'affiche aucune publicité et aucun compte n'est nécessaire pour jouer.
+              Aucun compte n'est nécessaire pour jouer. Le site web n'affiche aucune publicité.
             </p>
             <p>
               Avec votre accord uniquement, le jeu utilise Google Analytics (via Firebase,
@@ -64,6 +64,24 @@ import { ConsentService } from '../../services/consent.service';
             <p>
               Vous pouvez changer d'avis à tout moment :
               <button type="button" class="underline font-semibold" (click)="manageCookies()">{{ i18n.t().consentManage }}</button>.
+            </p>
+
+            <h3>Publicités (applications Android et iOS)</h3>
+            <p>
+              Les applications mobiles affichent des publicités fournies par Google AdMob
+              (Google Ireland Limited) : une bannière en bas de l'écran et, de temps en temps,
+              une publicité plein écran entre deux parties. Pour cela, Google peut utiliser
+              l'identifiant publicitaire de votre appareil et des données techniques
+              (adresse IP, modèle d'appareil, interactions avec les annonces).
+            </p>
+            <p>
+              Dans l'Espace économique européen, au Royaume-Uni et en Suisse, votre accord est
+              demandé au premier lancement par le formulaire de Google. Si vous refusez,
+              des publicités non personnalisées peuvent tout de même s'afficher.
+              Sur iPhone, l'autorisation de suivi (« App Tracking Transparency ») est aussi demandée.
+              Vous pouvez modifier vos choix à tout moment depuis les options du jeu
+              (« {{ i18n.t().adPrivacy }} ») ou dans les réglages de votre appareil.
+              Voir <a href="https://policies.google.com/technologies/ads?hl=fr" target="_blank" rel="noopener noreferrer">comment Google utilise les données publicitaires</a>.
             </p>
 
             <h3>Données enregistrées sur votre appareil</h3>
@@ -103,7 +121,7 @@ import { ConsentService } from '../../services/consent.service';
               La police Fredoka est distribuée sous licence SIL Open Font License 1.1.
             </p>
 
-            <p class="opacity-60 mt-4">Dernière mise à jour : 3 novembre 2026</p>
+            <p class="opacity-60 mt-4">Dernière mise à jour : 18 novembre 2026</p>
           } @else {
             <h3>Publisher</h3>
             <p>
@@ -121,7 +139,7 @@ import { ConsentService } from '../../services/consent.service';
 
             <h3>Cookies and analytics</h3>
             <p>
-              Pavat shows no ads and no account is needed to play.
+              No account is needed to play. The website shows no ads.
             </p>
             <p>
               Only with your consent, the game uses Google Analytics (via Firebase,
@@ -133,6 +151,22 @@ import { ConsentService } from '../../services/consent.service';
             <p>
               You can change your mind at any time:
               <button type="button" class="underline font-semibold" (click)="manageCookies()">{{ i18n.t().consentManage }}</button>.
+            </p>
+
+            <h3>Ads (Android and iOS apps)</h3>
+            <p>
+              The mobile apps show ads provided by Google AdMob (Google Ireland Limited):
+              a banner at the bottom of the screen and, from time to time, a full-screen ad
+              between two games. To do so, Google may use your device's advertising identifier
+              and technical data (IP address, device model, interactions with ads).
+            </p>
+            <p>
+              In the European Economic Area, the UK and Switzerland, your consent is requested
+              on first launch through Google's consent form. If you refuse, non-personalised ads
+              may still be shown. On iPhone, tracking permission ("App Tracking Transparency")
+              is also requested. You can change your choices at any time from the game options
+              ("{{ i18n.t().adPrivacy }}") or in your device settings.
+              See <a href="https://policies.google.com/technologies/ads?hl=en" target="_blank" rel="noopener noreferrer">how Google uses advertising data</a>.
             </p>
 
             <h3>Data stored on your device</h3>

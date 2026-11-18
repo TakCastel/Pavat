@@ -12,9 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Capacitor
-ios
-android
+# Capacitor (les projets natifs android/ et ios/ sont versionnés)
 .capacitor
 
 # Editor directories and files

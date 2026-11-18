@@ -1,5 +1,8 @@
 # Guide de configuration mobile pour Pavat
 
+> **Publication sur les stores, pubs AdMob et Google Analytics : voir [STORE_RELEASE.md](STORE_RELEASE.md).**
+> Les projets `android/` et `ios/` sont maintenant générés et versionnés (Capacitor 8) : inutile de relancer `cap add`.
+
 Ce guide vous explique comment transformer Pavat en application mobile pour iOS et Android tout en conservant le site web.
 
 ## 🎯 Vue d'ensemble

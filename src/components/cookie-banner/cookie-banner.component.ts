@@ -12,7 +12,7 @@ import { LegalNoticeComponent } from '../legal-notice/legal-notice.component';
   template: `
     @if (consent.choice() === null) {
       <div
-        class="fixed inset-x-0 bottom-0 z-[65] p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex justify-center pointer-events-none"
+        class="fixed inset-x-0 bottom-[var(--ad-banner-h,0px)] z-[65] p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex justify-center pointer-events-none"
         role="region"
         aria-live="polite"
         [attr.aria-label]="i18n.t().consentManage">

@@ -581,7 +581,12 @@ export class GameService {
     }
   }
 
+  /** Compteur de nouvelles parties (pour la mesure d'audience) */
+  private _gameStarts = signal(0);
+  public readonly gameStarts = this._gameStarts.asReadonly();
+
   public startGame(): void {
+    this._gameStarts.update(n => n + 1);
     clearTimeout(this.shrinkTimeout);
     this.cancelBonusPick();
     this._undoStack = [];
