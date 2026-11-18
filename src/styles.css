@@ -686,16 +686,17 @@ body::before {
 .tb-gear        { --x: 913; --y: 56;  --w: 80;  --h: 72;  --e: 8;  --f: 0; }
 .tb-scorecard   { --x: 80;  --y: 218; --w: 864; --h: 107; --e: 8;  --f: 0.12; }
 .tb-board-box   { --x: 111; --y: 357; --w: 800; --h: 750; --f: 0.3; --gw: 1; --gh: 0.9375; --gx: 0.5; }
-.tb-piece-cur   { --x: 40;  --y: 1180; --w: 560; --h: 320; --e: 8; --f: 1; --g: 0.9375; }
-.tb-piece-next  { --x: 620; --y: 1180; --w: 364; --h: 168; --e: 8; --f: 1; --g: 0.9375; }
+.tb-piece-cur   { --x: 40;  --y: 1228; --w: 560; --h: 272; --e: 8; --f: 1; --g: 0.9375; }
+.tb-piece-next  { --x: 620; --y: 1228; --w: 364; --h: 138; --e: 8; --f: 1; --g: 0.9375; }
 /* Rotate n'agit que sur la pièce courante: on le pose dans sa carte, à droite */
-.tb-rotate      { --x: 470; --y: 1330; --w: 114; --h: 136; --e: 10; --f: 1; --g: 0.9375; }
+.tb-rotate      { --x: 470; --y: 1350; --w: 114; --h: 124; --e: 10; --f: 1; --g: 0.9375; }
 /* Sous la suivante: Échanger, Annuler, Bonus (icône + libellé) */
-.tb-swap        { --x: 620; --y: 1364; --w: 174; --h: 126; --e: 10; --f: 1; --g: 0.9375; }
-.tb-undo        { --x: 810; --y: 1364; --w: 174; --h: 126; --e: 10; --f: 1; --g: 0.9375; }
+.tb-swap        { --x: 620; --y: 1380; --w: 174; --h: 114; --e: 10; --f: 1; --g: 0.9375; }
+.tb-undo        { --x: 810; --y: 1380; --w: 174; --h: 114; --e: 10; --f: 1; --g: 0.9375; }
 /* Bonus: barre pleine largeur entre la grille et les pièces. Sur les écrans plus
    allongés que la maquette, elle se cale au milieu de l'espace libre (--f) et grandit un peu. */
-.tb-bonus       { --x: 40;  --y: 1116; --w: 944; --h: 56;  --e: 7;  --f: 0.62; --g: 0.9375; }
+/* Hauteur prise aux cartes de pièces, qui avaient de la marge */
+.tb-bonus       { --x: 40;  --y: 1116; --w: 944; --h: 96;  --e: 7;  --f: 0.6;  --g: 0.9375; }
 
 /* ---------- Logo + nuage ---------- */
 .tb-blob { pointer-events: none; overflow: visible; }
@@ -1365,7 +1366,8 @@ body::before {
 }
 /* Mode bonus: panneau à la place des pièces, la grille reste entièrement visible */
 .tb-bonus-panel {
-  --x: 40; --y: 1180; --w: 944; --h: 320; --e: 8; --f: 1; --g: 0.9375;
+  /* Couvre la barre de bonus et les cartes de pièces */
+  --x: 40; --y: 1116; --w: 944; --h: 384; --e: 8; --f: 1; --g: 0.9375;
   z-index: 30;
   display: flex;
   flex-direction: column;
@@ -1498,7 +1500,14 @@ body::before {
 .tb-bonus-gauge-text lucide-angular, .tb-bonus-gauge-text svg { width: calc(26 * var(--u)); height: calc(26 * var(--u)); }
 @media (max-aspect-ratio: 1/1) {
   /* Plus haute quand il y a de la place en trop (écrans allongés) */
-  .tb-layout .tb-bonus { height: calc(56 * var(--u) + min(var(--rest) * 0.35, 56 * var(--u))); }
+  .tb-layout .tb-bonus { height: calc(96 * var(--u) + min(var(--rest) * 0.3, 50 * var(--u))); padding: 0 calc(14 * var(--u)); gap: calc(18 * var(--u)); }
+  /* Boutons larges: la barre a de la place en largeur, et ils grandissent avec la hauteur libre */
+  .tb-layout .tb-bonus-slots { gap: calc(14 * var(--u)); }
+  .tb-layout .tb-bonus-slot { width: calc(150 * var(--u)); height: calc(100% - 14 * var(--u)); max-height: calc(130 * var(--u)); --r: 26; }
+  .tb-layout .tb-bonus-slot lucide-angular, .tb-layout .tb-bonus-slot svg { width: calc(48 * var(--u)); height: calc(48 * var(--u)); stroke-width: 2.4; }
+  .tb-layout .tb-bonus-slot-count { min-width: calc(42 * var(--u)); height: calc(42 * var(--u)); font-size: calc(27 * var(--u)); top: calc(-14 * var(--u)); right: calc(-10 * var(--u)); }
+  .tb-layout .tb-bonus-gauge { height: calc(44 * var(--u)); }
+  .tb-layout .tb-bonus-gauge-text { font-size: calc(25 * var(--u)); }
 }
 @media (min-aspect-ratio: 1/1) {
   .tb-bonus { flex-direction: column; justify-content: center; gap: calc(18 * var(--u)); padding: calc(16 * var(--u)) calc(22 * var(--u)); }
