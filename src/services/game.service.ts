@@ -81,11 +81,12 @@ const STARTING_UNDO_CHARGES = 1;
 /** Points rapportés par une case validée (×multiplicateur de taille de grille) */
 const VALIDATED_CELL_POINTS = 15;
 /**
- * Paliers de bonus de plus en plus espacés: 10 000, 25 000, 45 000, 70 000, 100 000…
- * (l'écart grandit de 5 000 à chaque palier). Un seul bonus par palier: le joueur le choisit.
+ * Paliers de bonus de plus en plus espacés, sans devenir inaccessibles:
+ * 10 000, 22 500, 37 500, 55 000, 75 000, 97 500… (l'écart grandit de 2 500 à chaque palier).
+ * Un seul bonus par palier: le joueur le choisit.
  */
 const BONUS_FIRST_STEP = 10000;
-const BONUS_STEP_GROWTH = 5000;
+const BONUS_STEP_GROWTH = 2500;
 export function bonusThreshold(n: number): number {
   return n <= 0 ? 0 : BONUS_FIRST_STEP * n + (BONUS_STEP_GROWTH * n * (n - 1)) / 2;
 }
