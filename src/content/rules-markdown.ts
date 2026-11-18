@@ -44,8 +44,12 @@ Ce document decrit toutes les regles et mecanismes observes dans le jeu.
 - Miroir: renverse horizontalement la tuile (si asymetrique).
 - Echange: permute tuile courante et suivante.
 - Annuler: reprend le dernier coup (charges gagnees en validant des groupes).
-- Bonus "nettoyer une couleur": tous les 10 000 points, on gagne un bonus (3 en reserve au maximum).
-  Il retire de la grille toutes les cases de la couleur choisie (sans rapporter de points).
+- Bonus: a chaque palier de score, on choisit un bonus parmi trois (3 de chaque type en reserve au maximum).
+  Paliers: 10 000, 25 000, 45 000, 70 000, 100 000... (l'ecart grandit de 5 000 a chaque palier).
+  - Nettoyage: retire de la grille toutes les cases d'une couleur (touchee sur la grille).
+  - Pinceau: repeint la piece actuelle dans la couleur choisie.
+  - Bombe: fait exploser la zone 3x3 autour de la case touchee.
+  Les bonus ne rapportent pas de points. Annuler reprend un bonus utilise et le rend.
 
 ## Lignes et colonnes completes
 - Une ligne ou colonne complete doit etre remplie d'une SEULE couleur.
@@ -150,8 +154,12 @@ This document describes all rules and main mechanics of the game.
 - Mirror: flip the tile horizontally (if asymmetric).
 - Swap: swap current and next tile.
 - Undo: take back the last move (charges earned by validating groups).
-- "Clear a color" bonus: every 10,000 points you earn a bonus (up to 3 in reserve).
-  It removes every cell of the chosen color from the grid (no points awarded).
+- Bonuses: at each score milestone you pick one of three bonuses (up to 3 of each kind in reserve).
+  Milestones: 10,000, 25,000, 45,000, 70,000, 100,000... (the gap grows by 5,000 each time).
+  - Clear: removes every cell of one color (tap it on the grid).
+  - Paint: repaints the current piece in the chosen color.
+  - Bomb: blasts the 3x3 area around the tapped cell.
+  Bonuses award no points. Undo takes back a used bonus and refunds it.
 
 ## Completed rows and columns
 - A full row/column must be filled with a SINGLE color.
