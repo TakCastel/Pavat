@@ -166,6 +166,7 @@
     <div class="tb-abs tb-card tb-bonus"
       [class.tb-bonus-gain]="bonusGainPulse()"
       [class.tb-bonus-active]="!!bonusPickMode() || bonusPending() > 0">
+      <div class="tb-bonus-slots">
       @for (b of bonusTypes; track b.type) {
         <button class="tb-btn tb-bonus-slot"
           [class.tb-btn-gold]="bonusInventory()[b.type] > 0"
@@ -179,10 +180,12 @@
           <span class="tb-bonus-slot-count">{{ bonusInventory()[b.type] }}</span>
         </button>
       }
-      <span class="tb-bonus-edge" aria-hidden="true"><span [style.width.%]="bonusProgress() * 100"></span></span>
-      @if (bonusInfoToast()) {
-        <div class="tb-bonus-bubble" role="status">{{ i18n.translateWithParams('bonusNext', fmt(nextBonusAt())) }}</div>
-      }
+      </div>
+      <!-- Prochain palier, toujours visible, avec un fin liseré qui se remplit -->
+      <div class="tb-bonus-next" [class.tb-bonus-next-flash]="bonusInfoToast()" role="status">
+        <span class="tb-bonus-next-text">{{ i18n.translateWithParams('bonusNext', fmt(nextBonusAt())) }}</span>
+        <span class="tb-bonus-edge" aria-hidden="true"><span [style.width.%]="bonusProgress() * 100"></span></span>
+      </div>
     </div>
 
     <!-- == Palier atteint: choix du bonus == -->
