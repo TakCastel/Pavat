@@ -148,6 +148,16 @@ export class GameService {
   public readonly isShrinkImminent = computed(() => this.state().isShrinkImminent);
   public readonly undoCharges = computed(() => this.state().undoCharges ?? 0);
   public readonly undoProgressPoints = computed(() => this.state().undoProgressPoints ?? 0);
+  /** Un coup pourrait être annulé s'il restait une charge (sert à proposer la vidéo récompensée). */
+  public readonly undoBlockedByCharges = computed(() =>
+    (this.state().undoCharges ?? 0) === 0 &&
+    this._undoStack.length > 0 &&
+    !this._isPlacementAnimating() &&
+    !this.state().isShrinking &&
+    !this.state().isShrinkImminent &&
+    !this.state().isGameOver
+  );
+
   public readonly canUndo = computed(() =>
     (this.state().undoCharges ?? 0) > 0 &&
     this._undoStack.length > 0 &&
@@ -393,6 +403,16 @@ export class GameService {
     Math.min(1, (this.state().undoProgressPoints ?? 0) / this.undoPointsPerCharge())
   );
   public readonly undoFull = computed(() => (this.state().undoCharges ?? 0) >= MAX_UNDO_CHARGES);
+
+  /** Ajoute une charge d'annulation (récompense d'une vidéo). */
+  public grantUndoCharge(): void {
+    this._gameState.update(s => ({
+      ...s,
+      undoCharges: Math.min(MAX_UNDO_CHARGES, (s.undoCharges ?? 0) + 1),
+    }));
+    this._undoGained.update(n => n + 1);
+    this.saveGameState();
+  }
 
   public undo(): void {
     if (!this.canUndo()) return;

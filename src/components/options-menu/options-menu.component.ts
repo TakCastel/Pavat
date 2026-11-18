@@ -6,6 +6,8 @@ import { GameService } from '../../services/game.service';
 import { SoundService } from '../../services/sound.service';
 import { TutorialService } from '../../services/tutorial.service';
 import { LegalNoticeComponent } from '../legal-notice/legal-notice.component';
+import { PremiumService } from '../../services/premium.service';
+import { AdsService } from '../../services/ads.service';
 
 @Component({
   selector: 'app-options-menu',
@@ -23,6 +25,8 @@ export class OptionsMenuComponent {
   protected gameService = inject(GameService);
   protected soundService = inject(SoundService);
   protected tutorialService = inject(TutorialService);
+  protected premium = inject(PremiumService);
+  protected ads = inject(AdsService);
   isOpen = signal(false);
   isClosing = signal(false);
   isLanguageDropdownOpen = signal(false);

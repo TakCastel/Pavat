@@ -136,8 +136,38 @@ body::before {
   50% { filter: brightness(1.6); transform: scale(1.03); }
   100% { filter: brightness(1.1); }
 }
+/* Cases qui vont exploser: contour blanc, flash blanc et petit tremblement */
+@keyframes clear-preview-wobble {
+  0%, 100% { transform: scale(1) rotate(0deg); filter: brightness(1.15) saturate(1.2); }
+  25% { transform: scale(1.06) rotate(-3deg); filter: brightness(1.45) saturate(1.3); }
+  50% { transform: scale(0.96) rotate(0deg); filter: brightness(1.15) saturate(1.2); }
+  75% { transform: scale(1.06) rotate(3deg); filter: brightness(1.45) saturate(1.3); }
+}
+@keyframes clear-preview-flash {
+  0%, 100% { background-color: rgba(255, 255, 255, 0.12); }
+  50% { background-color: rgba(255, 255, 255, 0.45); }
+}
 .animate-clear-preview {
-  animation: clear-preview-pulse 1s infinite;
+  position: relative;
+  z-index: 2;
+  opacity: 1 !important;
+  animation: clear-preview-wobble 0.6s ease-in-out infinite;
+  animation-delay: var(--pulse-delay, 0ms);
+}
+.animate-clear-preview.animate-clear-preview::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 3px #fff, inset 0 0 10px 2px rgba(255, 255, 255, 0.85);
+  opacity: 1;
+  animation: clear-preview-flash 0.6s ease-in-out infinite;
+  animation-delay: var(--pulse-delay, 0ms);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-clear-preview { animation: none; filter: brightness(1.3); }
+  .animate-clear-preview.animate-clear-preview::after { animation: none; background-color: rgba(255, 255, 255, 0.3); }
 }
 
 .cell-3d {
@@ -652,7 +682,8 @@ body::before {
    ========================================================= */
 .tb-layout {
   --safe-t: env(safe-area-inset-top, 0px);
-  --safe-b: env(safe-area-inset-bottom, 0px);
+  /* --ad-h: hauteur de la bannière AdMob (posée par AdsService, 0 sinon) */
+  --safe-b: calc(env(safe-area-inset-bottom, 0px) + var(--ad-h, 0px));
   --u: min(100vw / 1024, (100svh - var(--safe-t) - var(--safe-b)) / 1536);
   /* Écran plus allongé que la maquette: la grille grandit d'abord (--grow),
      puis le reste (--rest) est réparti entre les blocs selon --f */
@@ -680,8 +711,8 @@ body::before {
 .tb-layout .tb-card { --edge-size: calc(var(--e, 8) * var(--u)); }
 
 /* ---------- Placement: portrait (maquette mobile) ---------- */
-.tb-blob        { --x: 205; --y: -12; --w: 610; --h: 232; --f: 0; }
-.tb-logo        { --x: 281; --y: 52;  --w: 462; --h: 154; --f: 0; }
+.tb-blob        { --x: 205; --y: 16; --w: 610; --h: 232; --f: 0; }
+.tb-logo        { --x: 281; --y: 80;  --w: 462; --h: 154; --f: 0; }
 .tb-sound-btn   { --x: 808; --y: 56;  --w: 80;  --h: 72;  --e: 8;  --f: 0; }
 .tb-gear        { --x: 913; --y: 56;  --w: 80;  --h: 72;  --e: 8;  --f: 0; }
 .tb-scorecard   { --x: 80;  --y: 218; --w: 864; --h: 107; --e: 8;  --f: 0.12; }
@@ -939,7 +970,7 @@ body::before {
 @media (min-aspect-ratio: 1/1) {
   .tb-layout {
     --safe-t: 0px;
-    --u: min(100vw / 1672, 100svh / 941);
+    --u: min(100vw / 1672, (100svh - var(--ad-h, 0px)) / 941);
     --extra: 0px;
     --grow: 0px;
     --rest: 0px;
@@ -1269,6 +1300,8 @@ body::before {
   stroke-width: 3;
 }
 .tb-pill.tb-pill-empty { opacity: 0.75; }
+/* Plus de charge : le bouton propose une vidéo récompensée */
+.tb-pill.tb-pill-ad { background: var(--tb-coral); color: #fff; }
 @keyframes undo-gain {
   0% { transform: scale(1); }
   35% { transform: scale(1.18) rotate(-6deg); }

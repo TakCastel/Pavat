@@ -14,7 +14,8 @@ dist-ssr
 
 # Capacitor
 ios
-android
+android/app/src/main/assets/public
+.capacitor
 .capacitor
 
 # Editor directories and files

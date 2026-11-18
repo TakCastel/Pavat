@@ -49,9 +49,21 @@ import { ConsentService } from '../../services/consent.service';
               Gordon House, Barrow Street, Dublin 4, Irlande.
             </p>
 
-            <h3>Cookies et mesure d'audience</h3>
+            <h3>Cookies, publicité et mesure d'audience</h3>
             <p>
-              Pavat n'affiche aucune publicité et aucun compte n'est nécessaire pour jouer.
+              Aucun compte n'est nécessaire pour jouer. Le jeu est gratuit et financé par la publicité.
+            </p>
+            <p>
+              Dans l'application Android, des publicités sont affichées par Google AdMob
+              (Google Ireland Limited) : une bannière, une publicité plein écran de temps en temps
+              entre deux parties, et une vidéo que vous pouvez choisir de regarder pour obtenir une
+              annulation. Au premier lancement, un formulaire de Google vous demande votre choix
+              sur la personnalisation des publicités ; vous pouvez le modifier à tout moment depuis le menu Options.
+              L'achat « Retirer les pubs » supprime la bannière et les publicités plein écran.
+              Il est géré par Google Play : nous ne recevons aucune donnée de paiement.
+            </p>
+            <p>
+              Sur le site web, avec votre accord uniquement, des publicités Google AdSense peuvent être affichées.
             </p>
             <p>
               Avec votre accord uniquement, le jeu utilise Google Analytics (via Firebase,
@@ -119,9 +131,20 @@ import { ConsentService } from '../../services/consent.service';
               Gordon House, Barrow Street, Dublin 4, Ireland.
             </p>
 
-            <h3>Cookies and analytics</h3>
+            <h3>Cookies, advertising and analytics</h3>
             <p>
-              Pavat shows no ads and no account is needed to play.
+              No account is needed to play. The game is free and funded by advertising.
+            </p>
+            <p>
+              In the Android app, ads are served by Google AdMob (Google Ireland Limited):
+              a banner, an occasional full-screen ad between games, and a video you can choose
+              to watch to earn an undo. On first launch, a Google form asks for your choice about
+              ad personalisation; you can change it at any time from the Options menu.
+              The "Remove ads" purchase removes the banner and full-screen ads.
+              It is handled by Google Play: we never receive any payment data.
+            </p>
+            <p>
+              On the website, Google AdSense ads may be shown, only with your consent.
             </p>
             <p>
               Only with your consent, the game uses Google Analytics (via Firebase,

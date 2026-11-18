@@ -151,16 +151,20 @@
     </button>
     <button
       (click)="undoMove()"
-      [disabled]="!canUndo()"
+      [disabled]="!canUndo() && !(undoBlockedByCharges() && ads.rewardedReady())"
       class="tb-abs tb-btn tb-btn-cream tb-undo"
-      [attr.aria-label]="i18n.t().undoButton"
+      [attr.aria-label]="undoBlockedByCharges() && ads.rewardedReady() ? i18n.t().undoWatchAd : i18n.t().undoButton"
       [attr.title]="i18n.translateWithParams('undoProgress', undoProgressPoints().toString(), undoPointsPerCharge().toString())"
       [class.tb-undo-gain]="undoGainPulse()">
       <lucide-angular [img]="Undo2Icon"></lucide-angular>
       <span class="tb-btn-text">{{ i18n.t().undo }}</span>
       <span class="tb-btn-cap">{{ i18n.t().undoShort }}</span>
       <kbd class="tb-kbd tb-kbd-cream">Z</kbd>
-      <span class="tb-pill" [class.tb-pill-empty]="undoCharges() === 0">{{ undoCharges() }}</span>
+      @if (undoBlockedByCharges() && ads.rewardedReady()) {
+        <span class="tb-pill tb-pill-ad" aria-hidden="true">▶</span>
+      } @else {
+        <span class="tb-pill" [class.tb-pill-empty]="undoCharges() === 0">{{ undoCharges() }}</span>
+      }
     </button>
     <!-- == Bonus: 3 boutons. Le liseré doré sous la barre se remplit vers le prochain palier. == -->
     <div class="tb-abs tb-card tb-bonus"
@@ -303,6 +307,7 @@
             {{ i18n.t().playAgain }}
           </button>
         </div>
+        <app-adsense-slot class="w-full"></app-adsense-slot>
       </div>
     </div>
   }

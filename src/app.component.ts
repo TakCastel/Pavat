@@ -16,11 +16,13 @@ import { LandingPageComponent } from './components/landing-page/landing-page.com
 import { LucideAngularModule, Volume2, VolumeX, Sun, Moon, Sparkles, ShieldCheck, Undo2, RotateCw, ArrowLeftRight, Eraser, Paintbrush, Bomb } from 'lucide-angular';
 
 import { CookieBannerComponent } from './components/cookie-banner/cookie-banner.component';
+import { AdsService } from './services/ads.service';
+import { AdSenseSlotComponent } from './components/adsense-slot/adsense-slot.component';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   standalone: true,
-  imports: [CommonModule, GridComponent, TilePreviewComponent, TutorialComponent, OptionsMenuComponent, LandingPageComponent, CookieBannerComponent, LucideAngularModule],
+  imports: [CommonModule, GridComponent, TilePreviewComponent, TutorialComponent, OptionsMenuComponent, LandingPageComponent, CookieBannerComponent, AdSenseSlotComponent, LucideAngularModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     // Pendant le tuto, ses propres raccourcis prennent le relais: la partie ne bouge pas
@@ -41,6 +43,8 @@ export class AppComponent implements OnInit {
   protected colorblindIconService = inject(ColorblindIconService);
   private sanitizer = inject(DomSanitizer);
   private injector = inject(Injector);
+  protected ads = inject(AdsService);
+  protected undoBlockedByCharges = this.gameService.undoBlockedByCharges;
 
   // État de la landing page
   showLandingPage = signal(true);
@@ -54,6 +58,7 @@ export class AppComponent implements OnInit {
     if (isCapacitorApp) {
       this.showLandingPage.set(false);
       this.gameService.startGame();
+      void this.ads.start();
       return;
     }
 
@@ -320,6 +325,7 @@ export class AppComponent implements OnInit {
   restartGame(): void {
     if (this.isGameOver()) {
       this.gameService.startGame();
+      void this.ads.onGameFinished();
       return;
     }
     this.isRestartConfirmVisible.set(true);
@@ -438,7 +444,19 @@ export class AppComponent implements OnInit {
   }
 
   undoMove(): void {
+    if (this.undoBlockedByCharges() && this.ads.rewardedReady()) {
+      void this.undoWithRewardedAd();
+      return;
+    }
     this.gameService.undo();
+  }
+
+  /** Plus de charge : une vidéo récompensée en redonne une, puis on annule le coup. */
+  private async undoWithRewardedAd(): Promise<void> {
+    if (await this.ads.showRewarded()) {
+      this.gameService.grantUndoCharge();
+      this.gameService.undo();
+    }
   }
 
   onUndoKeyPress(): void {
