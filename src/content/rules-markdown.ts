@@ -45,7 +45,7 @@ Ce document decrit toutes les regles et mecanismes observes dans le jeu.
 - Echange: permute tuile courante et suivante.
 - Annuler: reprend le dernier coup (charges gagnees en validant des groupes).
 - Bonus: a chaque palier de score, on choisit un bonus parmi trois (pas de limite: on peut en cumuler autant qu'on veut).
-  Paliers: 10 000, 22 500, 37 500, 55 000, 75 000, 97 500... (l'ecart grandit de 2 500 a chaque palier).
+  Paliers: 6 000, 13 000, 21 000, 30 000, 40 000, 51 000... (l'ecart grandit de 1 000 a chaque palier).
   - Nettoyage: retire de la grille toutes les cases d'une couleur (touchee sur la grille).
   - Pinceau: repeint la piece actuelle dans la couleur choisie.
   - Bombe: fait exploser la zone 3x3 autour de la case touchee.
@@ -155,7 +155,7 @@ This document describes all rules and main mechanics of the game.
 - Swap: swap current and next tile.
 - Undo: take back the last move (charges earned by validating groups).
 - Bonuses: at each score milestone you pick one of three bonuses (no limit: you can stack as many as you like).
-  Milestones: 10,000, 22,500, 37,500, 55,000, 75,000, 97,500... (the gap grows by 2,500 each time).
+  Milestones: 6,000, 13,000, 21,000, 30,000, 40,000, 51,000... (the gap grows by 1,000 each time).
   - Clear: removes every cell of one color (tap it on the grid).
   - Paint: repaints the current piece in the chosen color.
   - Bomb: blasts the 3x3 area around the tapped cell.

@@ -116,7 +116,7 @@ export class AppComponent implements OnInit {
   });
   minValidatedGroupSize = this.gameService.minValidatedGroupSize;
 
-  // ---------- Bonus: 1 choix à chaque palier (10 000, 25 000, 45 000…) ----------
+  // ---------- Bonus: 1 choix à chaque palier (6 000, 13 000, 21 000…) ----------
   /** Les trois bonus, dans l'ordre d'affichage */
   readonly bonusTypes: { type: BonusType; icon: any }[] = [
     { type: 'clear', icon: Eraser },
